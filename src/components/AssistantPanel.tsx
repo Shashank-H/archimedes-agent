@@ -39,10 +39,17 @@ export function AssistantPanel({
     <aside className="assistant-panel">
       <header className="assistant-header">
         <div>
-          <h1>Gemma Reviewer</h1>
+          <h1>Brainstorm Gemma</h1>
           <p>{status}</p>
         </div>
-        <button onClick={() => setShowSettings((value) => !value)}>{showSettings ? 'Chat' : 'Settings'}</button>
+        <button
+          className="settings-toggle"
+          onClick={() => setShowSettings((value) => !value)}
+          aria-label={showSettings ? 'Back to chat' : 'Open settings'}
+          title={showSettings ? 'Back to chat' : 'Settings'}
+        >
+          {showSettings ? '💬' : '⚙'}
+        </button>
       </header>
 
       {showSettings ? (
@@ -75,10 +82,18 @@ export function AssistantPanel({
           <label className="checkbox-row">
             <input
               type="checkbox"
+              checked={settings.theme === 'dark'}
+              onChange={(event) => onSettingsChange({ ...settings, theme: event.target.checked ? 'dark' : 'light' })}
+            />
+            Dark theme
+          </label>
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
               checked={settings.autoReview}
               onChange={(event) => onSettingsChange({ ...settings, autoReview: event.target.checked })}
             />
-            Proactive review after inactivity
+            Send diagram image every 20s
           </label>
           <button onClick={onTestConnection} disabled={isBusy}>Test Ollama</button>
           <p className="privacy-note">Local-only: prompts, images, chats, and diagrams are sent only to the configured Ollama endpoint.</p>
@@ -87,13 +102,21 @@ export function AssistantPanel({
         <>
           <div className="assistant-actions">
             <button onClick={() => onReview()} disabled={isBusy}>Review diagram</button>
+            <button
+              onClick={() => onSettingsChange({ ...settings, autoReview: !settings.autoReview })}
+              className={`icon-button ${settings.autoReview ? 'pause-button' : 'resume-button'}`}
+              aria-label={settings.autoReview ? 'Pause auto-send' : 'Resume auto-send'}
+              title={settings.autoReview ? 'Pause auto-send' : 'Resume auto-send'}
+            >
+              {settings.autoReview ? '⏸' : '▶'}
+            </button>
             <button onClick={onClearChat} disabled={isBusy || messages.length === 0}>Clear chat</button>
           </div>
 
           <div className="message-list">
             {messages.length === 0 ? (
               <div className="empty-state">
-                Draw a system design, then click <strong>Review diagram</strong>. Auto-review will also comment after meaningful inactivity.
+                Draw a system design, then click <strong>Review diagram</strong>. Auto-send reviews the diagram image every 20 seconds unless paused.
               </div>
             ) : (
               messages.map((message) => (

@@ -7,6 +7,7 @@ import type { DiagramSnapshot } from '../types';
 
 type DiagramCanvasProps = {
   initialSnapshot: DiagramSnapshot | null;
+  theme: 'light' | 'dark';
   onSnapshotChange: (snapshot: DiagramSnapshot) => void;
   onApiReady: (api: ExcalidrawImperativeAPI) => void;
 };
@@ -26,17 +27,17 @@ function persistenceAppState(appState: AppState): Partial<AppState> {
   };
 }
 
-export function DiagramCanvas({ initialSnapshot, onSnapshotChange, onApiReady }: DiagramCanvasProps) {
+export function DiagramCanvas({ initialSnapshot, theme, onSnapshotChange, onApiReady }: DiagramCanvasProps) {
   const initialData = useMemo(
     () =>
       initialSnapshot
         ? {
             elements: initialSnapshot.elements,
-            appState: initialSnapshot.appState,
+            appState: { ...initialSnapshot.appState, theme },
             files: initialSnapshot.files,
           }
-        : undefined,
-    [initialSnapshot],
+        : { appState: { theme } },
+    [initialSnapshot, theme],
   );
 
   return (
@@ -44,6 +45,7 @@ export function DiagramCanvas({ initialSnapshot, onSnapshotChange, onApiReady }:
       <Excalidraw
         excalidrawAPI={onApiReady}
         initialData={initialData}
+        theme={theme}
         onChange={(elements: readonly ExcalidrawElement[], appState: AppState, files: BinaryFiles) => {
           onSnapshotChange({
             elements,

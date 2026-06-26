@@ -14,9 +14,13 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 .assistant-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem; border-bottom: 1px solid #e2e8f0; background: #ffffff; }
 .assistant-header h1 { margin: 0; font-size: 1.05rem; }
 .assistant-header p { margin: 0.25rem 0 0; font-size: 0.78rem; color: #64748b; }
-.assistant-actions { display: flex; gap: 0.5rem; padding: 0.75rem 1rem; border-bottom: 1px solid #e2e8f0; }
-.assistant-actions button:first-child { flex: 1; background: #111827; color: #fff; border-color: #111827; }
+.settings-toggle { width: 46px; min-width: 46px; height: 46px; padding: 0; font-size: 1.35rem; line-height: 1; }
+.assistant-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 0.75rem 1rem; border-bottom: 1px solid #e2e8f0; }
+.assistant-actions button:first-child { flex: 1; min-width: 120px; background: #111827; color: #fff; border-color: #111827; }
 .assistant-actions button:first-child:hover:not(:disabled) { background: #1f2937; }
+.assistant-actions .icon-button { width: 38px; min-width: 38px; padding: 0; font-size: 0.95rem; line-height: 1; }
+.assistant-actions .pause-button { border-color: #f59e0b; background: #fffbeb; color: #92400e; }
+.assistant-actions .resume-button { border-color: #22c55e; background: #f0fdf4; color: #166534; }
 
 .message-list { flex: 1; overflow: auto; padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem; }
 .empty-state { color: #64748b; background: #fff; border: 1px dashed #cbd5e1; border-radius: 14px; padding: 1rem; line-height: 1.45; }
@@ -54,3 +58,40 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 .checkbox-row { flex-direction: row !important; align-items: center; }
 .privacy-note { color: #64748b; background: #ecfdf5; border: 1px solid #bbf7d0; border-radius: 12px; padding: 0.75rem; line-height: 1.4; }
 .excalidraw { --color-primary: #2563eb; }
+
+.theme-dark { color-scheme: dark; background: #020617; color: #e5e7eb; }
+.theme-dark .canvas-pane { border-right-color: #1e293b; background: #020617; }
+.theme-dark .assistant-panel { background: #020617; border-left-color: #1e293b; }
+.theme-dark .assistant-header,
+.theme-dark .composer { background: #0f172a; border-color: #1e293b; }
+.theme-dark .assistant-header p,
+.theme-dark .empty-state,
+.theme-dark .message-meta,
+.theme-dark .message-meta small,
+.theme-dark .composer-options label,
+.theme-dark .settings-section label,
+.theme-dark .privacy-note { color: #94a3b8; }
+.theme-dark .assistant-actions { border-bottom-color: #1e293b; }
+.theme-dark button { background: #111827; color: #e5e7eb; border-color: #334155; }
+.theme-dark button:hover:not(:disabled) { background: #1f2937; }
+.theme-dark .assistant-actions button:first-child,
+.theme-dark .composer button { background: #3b82f6; border-color: #3b82f6; color: #eff6ff; }
+.theme-dark .assistant-actions button:first-child:hover:not(:disabled),
+.theme-dark .composer button:hover:not(:disabled) { background: #2563eb; }
+.theme-dark .assistant-actions .pause-button { border-color: #a16207; background: #451a03; color: #fbbf24; }
+.theme-dark .assistant-actions .resume-button { border-color: #15803d; background: #052e16; color: #86efac; }
+.theme-dark .empty-state,
+.theme-dark .message.assistant { background: #0f172a; border-color: #334155; }
+.theme-dark .message.user { background: #172554; border-color: #1d4ed8; }
+.theme-dark .message.error { background: #450a0a; border-color: #991b1b; }
+.theme-dark .message.proactive-review { background: #422006; border-color: #a16207; }
+.theme-dark .markdown-content code { background: #1e293b; border-color: #334155; color: #e2e8f0; }
+.theme-dark .markdown-content pre { background: #020617; border-color: #334155; }
+.theme-dark .markdown-content a { color: #93c5fd; }
+.theme-dark .composer select,
+.theme-dark .composer textarea,
+.theme-dark .settings-section input[type="text"],
+.theme-dark .settings-section input:not([type]) { background: #020617; color: #e5e7eb; border-color: #334155; }
+.theme-dark .composer textarea::placeholder { color: #64748b; }
+.theme-dark .privacy-note { background: #052e16; border-color: #166534; }
+.theme-dark .excalidraw { --color-primary: #60a5fa; }

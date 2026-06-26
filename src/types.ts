@@ -2,12 +2,14 @@ import type { AppState, BinaryFiles, ExcalidrawImperativeAPI } from '@excalidraw
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types';
 
 export type ThinkingLevel = 'off' | 'low' | 'medium' | 'high';
+export type AppTheme = 'light' | 'dark';
 
 export type AppSettings = {
   ollamaEndpoint: string;
   model: string;
   temperature: number;
   thinkingLevel: ThinkingLevel;
+  theme: AppTheme;
   autoReview: boolean;
   proactiveDelayMs: number;
   proactiveCooldownMs: number;
@@ -56,6 +58,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   model: 'gemma4:e4b',
   temperature: 0.3,
   thinkingLevel: 'low',
+  theme: 'light',
   autoReview: true,
   proactiveDelayMs: 12_000,
   proactiveCooldownMs: 60_000,

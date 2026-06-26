@@ -9,6 +9,8 @@ import { loadChat, loadScene, loadSettings, saveChat, saveScene, saveSettings } 
 import type { AppSettings, ChatMessage, DiagramSnapshot, ExcalidrawApi } from './types';
 import './styles.css';
 
+const AUTO_REVIEW_INTERVAL_MS = 20_000;
+const AUTO_REVIEW_MAX_WAIT_MS = 60_000;
 const MIN_ELEMENTS_FOR_PROACTIVE_REVIEW = 2;
 
 function id(prefix: string) {
@@ -31,8 +33,9 @@ export default function App() {
   const snapshotRef = useRef<DiagramSnapshot | null>(initialSnapshot);
   const persistTimerRef = useRef<number | undefined>(undefined);
   const proactiveTimerRef = useRef<number | undefined>(undefined);
-  const lastProactiveAtRef = useRef(0);
-  const lastSignatureRef = useRef(initialSnapshot ? meaningfulSceneSignature(initialSnapshot) : '');
+  const firstUnsentChangeAtRef = useRef<number | null>(null);
+  const lastSentSignatureRef = useRef('');
+  const isBusyRef = useRef(false);
   const inFlightAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -43,6 +46,10 @@ export default function App() {
   useEffect(() => {
     saveChat(messages);
   }, [messages]);
+
+  useEffect(() => {
+    isBusyRef.current = isBusy;
+  }, [isBusy]);
 
   const updateMessages = (updater: (messages: ChatMessage[]) => ChatMessage[]) => {
     setMessages((current) => updater(current));
@@ -60,6 +67,36 @@ export default function App() {
     );
   };
 
+  const scheduleProactiveReview = () => {
+    window.clearTimeout(proactiveTimerRef.current);
+    if (!settings.autoReview) {
+      firstUnsentChangeAtRef.current = null;
+      return;
+    }
+
+    const current = snapshotRef.current;
+    if (!current) return;
+
+    const signature = meaningfulSceneSignature(current);
+    if (!signature || signature === lastSentSignatureRef.current) {
+      firstUnsentChangeAtRef.current = null;
+      return;
+    }
+
+    const now = Date.now();
+    firstUnsentChangeAtRef.current ??= now;
+    const maxWaitRemaining = AUTO_REVIEW_MAX_WAIT_MS - (now - firstUnsentChangeAtRef.current);
+    const delay = Math.max(0, Math.min(AUTO_REVIEW_INTERVAL_MS, maxWaitRemaining));
+
+    proactiveTimerRef.current = window.setTimeout(() => {
+      if (isBusyRef.current) {
+        proactiveTimerRef.current = window.setTimeout(scheduleProactiveReview, AUTO_REVIEW_INTERVAL_MS);
+        return;
+      }
+      void runAgentReview({ mode: 'proactive' });
+    }, delay);
+  };
+
   const handleSnapshotChange = (nextSnapshot: DiagramSnapshot) => {
     // Keep high-frequency canvas changes out of React state. Excalidraw calls
     // onChange often; setting parent state here can cause Excalidraw to
@@ -69,15 +106,7 @@ export default function App() {
     window.clearTimeout(persistTimerRef.current);
     persistTimerRef.current = window.setTimeout(() => saveScene(nextSnapshot), 600);
 
-    const nextSignature = meaningfulSceneSignature(nextSnapshot);
-    if (nextSignature === lastSignatureRef.current) return;
-    lastSignatureRef.current = nextSignature;
-
-    window.clearTimeout(proactiveTimerRef.current);
-    if (!settings.autoReview || isBusy) return;
-    proactiveTimerRef.current = window.setTimeout(() => {
-      void runAgentReview({ mode: 'proactive' });
-    }, settings.proactiveDelayMs);
+    scheduleProactiveReview();
   };
 
   const buildImageMessages = async (mode: 'manual' | 'proactive' | 'chat', userPrompt?: string): Promise<OllamaMessage[]> => {
@@ -103,12 +132,7 @@ export default function App() {
     }
 
     const liveElements = current.elements.filter((element) => !element.isDeleted);
-    if (mode === 'proactive') {
-      const now = Date.now();
-      if (liveElements.length < MIN_ELEMENTS_FOR_PROACTIVE_REVIEW) return;
-      if (now - lastProactiveAtRef.current < settings.proactiveCooldownMs) return;
-      lastProactiveAtRef.current = now;
-    }
+    if (mode === 'proactive' && liveElements.length < MIN_ELEMENTS_FOR_PROACTIVE_REVIEW) return;
 
     setIsBusy(true);
     setStatus(mode === 'proactive' ? 'Proactively reviewing diagram...' : 'Reviewing diagram image...');
@@ -135,6 +159,10 @@ export default function App() {
         signal: controller.signal,
         onToken: (token) => appendToken(assistantId, token),
       });
+      if (mode === 'proactive' && current) {
+        lastSentSignatureRef.current = meaningfulSceneSignature(current);
+        firstUnsentChangeAtRef.current = null;
+      }
       setStatus(`Local Ollama · ${settings.model}`);
     } catch (error) {
       const message = toErrorMessage(error);
@@ -174,6 +202,11 @@ export default function App() {
   };
 
   useEffect(() => {
+    scheduleProactiveReview();
+    return () => window.clearTimeout(proactiveTimerRef.current);
+  }, [settings.autoReview]);
+
+  useEffect(() => {
     return () => {
       window.clearTimeout(persistTimerRef.current);
       window.clearTimeout(proactiveTimerRef.current);
@@ -182,10 +215,11 @@ export default function App() {
   }, []);
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell theme-${settings.theme}`}>
       <section className="canvas-pane">
         <DiagramCanvas
           initialSnapshot={initialSnapshot}
+          theme={settings.theme}
           onSnapshotChange={handleSnapshotChange}
           onApiReady={(api) => {
             apiRef.current = api;
