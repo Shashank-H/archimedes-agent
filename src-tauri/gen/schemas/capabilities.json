@@ -1,0 +1,9 @@
+{
+  "default": {
+    "identifier": "default",
+    "description": "Default app capability",
+    "local": true,
+    "windows": ["main"],
+    "permissions": ["opener:default"]
+  }
+}
