@@ -828,17 +828,40 @@ body.is-resizing-sidebar .sidebar-resizer::after { opacity: 1; }
   gap: 10px;
   margin-bottom: 4px;
 }
+.vision-model-command {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 2px 2px 6px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--canvas-soft-2);
+}
+.vision-model-command code {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
 .model-copy-button {
-  width: 30px;
-  height: 30px;
-  min-height: 30px;
+  width: 26px;
+  height: 26px;
+  min-height: 26px;
   display: inline-grid;
   place-items: center;
   flex: 0 0 auto;
   padding: 0;
-  border-radius: 999px;
+  border-radius: 6px;
   color: var(--ink);
-  background: var(--canvas-soft-2);
+  background: var(--canvas);
+  transition: background 160ms ease, color 160ms ease;
+}
+.model-copy-button.is-copied,
+button.model-copy-button:hover:not(:disabled) {
+  color: var(--on-primary);
+  background: var(--ink);
+  border-color: var(--ink);
 }
 .vision-model-list {
   display: flex;
