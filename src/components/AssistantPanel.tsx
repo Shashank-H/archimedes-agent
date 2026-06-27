@@ -30,6 +30,7 @@ type IconName =
   | 'sliders'
   | 'info'
   | 'x'
+  | 'github'
   | 'chevronDown';
 
 function Icon({ name, size = 16 }: { name: IconName; size?: number }) {
@@ -76,10 +77,15 @@ function Icon({ name, size = 16 }: { name: IconName; size?: number }) {
       return <svg {...common}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>;
     case 'x':
       return <svg {...common}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>;
+    case 'github':
+      return <svg {...common}><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.1-1.3-.3-2.6-1.2-3.6.2-1.2.2-2.5-.1-3.6 0 0-1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 1.5 5.5 1.8 5.5 1.8c-.3 1.1-.4 2.4-.1 3.6A5.3 5.3 0 0 0 4.2 9c0 3.5 3 5.5 6 5.5-.5.5-.8 1.2-.9 2"/><path d="M9 18c-4.5 2-5-2-7-2"/></svg>;
     case 'chevronDown':
       return <svg {...common}><path d="m6 9 6 6 6-6"/></svg>;
   }
 }
+
+const PROJECT_GITHUB_URL = 'https://github.com/Shashank-H/archimedes-agent';
+const X_PROFILE_URL = 'https://x.com/ShashankH_';
 
 const OPEN_SOURCE_CREDITS = [
   { name: 'Design.md Vercel analysis', packageName: 'getdesign.md/vercel/design-md', license: 'Independent public design analysis', url: 'https://getdesign.md/vercel/design-md', note: 'Vercel-inspired DESIGN.md reference used for visual direction; not affiliated with Vercel.' },
@@ -215,6 +221,14 @@ export function AssistantPanel({
             Open source credits
           </button>
           <p className="privacy-note">Local-only: prompts, images, chats, and diagrams are sent only to the configured Ollama endpoint.</p>
+          <footer className="settings-footer">
+            <span>Built by <a href={X_PROFILE_URL} target="_blank" rel="noreferrer">Shashank Harikripa</a></span>
+            <nav className="settings-socials" aria-label="Social links">
+              <a className="icon-link" href={PROJECT_GITHUB_URL} target="_blank" rel="noreferrer" aria-label="Open GitHub repository">
+                <Icon name="github" size={16} />
+              </a>
+            </nav>
+          </footer>
         </section>
       ) : (
         <>
