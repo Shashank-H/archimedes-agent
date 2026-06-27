@@ -166,10 +166,19 @@ body.is-resizing-sidebar .sidebar-resizer::after { opacity: 1; }
   display: grid;
   place-items: center;
   border-radius: 10px;
-  background: var(--ink);
-  color: var(--on-primary);
+  background: var(--canvas);
   box-shadow: var(--shadow-2);
+  overflow: hidden;
 }
+.assistant-mark img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+}
+.assistant-mark .logo-dark { display: none; }
+.theme-dark .assistant-mark .logo-light { display: none; }
+.theme-dark .assistant-mark .logo-dark { display: block; }
 .assistant-header h1 {
   margin: 0;
   font-size: 20px;
@@ -572,7 +581,6 @@ body.is-resizing-sidebar .sidebar-resizer::after { opacity: 1; }
 .theme-dark .composer-input-wrap { background: rgba(23, 23, 23, 0.76); }
 .theme-dark .composer-input-wrap:focus-within { background: rgba(23, 23, 23, 0.96); }
 .theme-dark button:hover:not(:disabled) { background: #171717; border-color: #3f3f3f; }
-.theme-dark .assistant-mark,
 .theme-dark .send-button,
 .theme-dark .settings-section > button { background: #fff; border-color: #fff; color: #171717; }
 .theme-dark .send-button:hover:not(:disabled),

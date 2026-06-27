@@ -3,3 +3,8 @@ dist
 src-tauri/target
 .env
 .DS_Store
+
+# Generated Tauri app icons. Source assets live in /logos and icons are
+# regenerated at bundle time via `npm run icons`.
+src-tauri/icons/*
+!src-tauri/icons/.gitkeep

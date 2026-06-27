@@ -1,5 +1,9 @@
 # Archimedes Agent
 
+<p align="center">
+  <img src="logos/logo.png" alt="Archimedes Agent logo" width="112" />
+</p>
+
 A local-first desktop/web prototype for drawing system-design diagrams with Excalidraw and brainstorming with a right-side Archimedes assistant.
 
 The app embeds Excalidraw as the diagramming surface and sends an exported diagram image to a local Ollama model (`gemma4:e4b` by default). The assistant reviews the diagram, asks questions, highlights risks, and suggests improvements.
@@ -163,7 +167,7 @@ src-tauri/
   tauri.conf.json                 Tauri app/window/bundle config
   src/main.rs, src/lib.rs         Tauri entrypoints
   capabilities/default.json       Tauri v2 capabilities
-  icons/icon.ico                  Temporary app icon
+  icons/                          Generated app icons from logos/logo.png
 
 docs/
   ARCHITECTURE.md                 Current implementation architecture

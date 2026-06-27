@@ -112,7 +112,10 @@ export function AssistantPanel({
     <aside className="assistant-panel">
       <header className="assistant-header">
         <div className="assistant-title">
-          <span className="assistant-mark"><Icon name="brain" size={18} /></span>
+          <span className="assistant-mark">
+            <img className="logo-light" src="/logos/logo-light.svg" alt="" aria-hidden="true" />
+            <img className="logo-dark" src="/logos/logo-dark.svg" alt="" aria-hidden="true" />
+          </span>
           <div>
             <h1>Archimedes Agent</h1>
             <p>{status}</p>
