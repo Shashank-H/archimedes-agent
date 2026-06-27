@@ -1,7 +1,7 @@
 # Archimedes Agent
 
 <p align="center">
-  <img src="logos/logo.png" alt="Archimedes Agent logo" width="112" />
+  <img src="logos/logo.png" alt="Archimedes Agent logo" width="250" />
 </p>
 
 A local-first desktop/web prototype for drawing system-design diagrams with Excalidraw and brainstorming with a right-side Archimedes assistant.
