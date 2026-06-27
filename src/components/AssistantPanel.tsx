@@ -28,6 +28,8 @@ type IconName =
   | 'trash'
   | 'user'
   | 'sliders'
+  | 'info'
+  | 'x'
   | 'chevronDown';
 
 function Icon({ name, size = 16 }: { name: IconName; size?: number }) {
@@ -70,10 +72,25 @@ function Icon({ name, size = 16 }: { name: IconName; size?: number }) {
       return <svg {...common}><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>;
     case 'sliders':
       return <svg {...common}><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></svg>;
+    case 'info':
+      return <svg {...common}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>;
+    case 'x':
+      return <svg {...common}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>;
     case 'chevronDown':
       return <svg {...common}><path d="m6 9 6 6 6-6"/></svg>;
   }
 }
+
+const OPEN_SOURCE_CREDITS = [
+  { name: 'Design.md Vercel analysis', packageName: 'getdesign.md/vercel/design-md', license: 'Independent public design analysis', url: 'https://getdesign.md/vercel/design-md', note: 'Vercel-inspired DESIGN.md reference used for visual direction; not affiliated with Vercel.' },
+  { name: 'Excalidraw', packageName: '@excalidraw/excalidraw', license: 'MIT', url: 'https://github.com/excalidraw/excalidraw', note: 'Embeddable whiteboard and diagram canvas.' },
+  { name: 'Tauri', packageName: '@tauri-apps/api / @tauri-apps/cli', license: 'Apache-2.0 OR MIT', url: 'https://tauri.app', note: 'Desktop app runtime, APIs, and build tooling.' },
+  { name: 'PostHog JS', packageName: 'posthog-js', license: 'See package LICENSE', url: 'https://posthog.com/docs/libraries/js', note: 'Privacy-aware product analytics client.' },
+  { name: 'React', packageName: 'react / react-dom', license: 'MIT', url: 'https://react.dev', note: 'User-interface rendering framework.' },
+  { name: 'Vite', packageName: 'vite / @vitejs/plugin-react', license: 'MIT', url: 'https://vite.dev', note: 'Development server and production bundler.' },
+  { name: 'TypeScript', packageName: 'typescript', license: 'Apache-2.0', url: 'https://www.typescriptlang.org', note: 'Typed JavaScript language tooling.' },
+  { name: 'DefinitelyTyped', packageName: '@types/node / @types/react / @types/react-dom', license: 'MIT', url: 'https://github.com/DefinitelyTyped/DefinitelyTyped', note: 'Community TypeScript type definitions.' },
+];
 
 export function AssistantPanel({
   messages,
@@ -88,6 +105,7 @@ export function AssistantPanel({
 }: AssistantPanelProps) {
   const [prompt, setPrompt] = useState('');
   const [showSettings, setShowSettings] = useState(false);
+  const [showCredits, setShowCredits] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const resizePromptInput = () => {
@@ -100,6 +118,15 @@ export function AssistantPanel({
   useEffect(() => {
     resizePromptInput();
   }, [prompt]);
+
+  useEffect(() => {
+    if (!showCredits) return;
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') setShowCredits(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showCredits]);
 
   const submit = () => {
     const value = prompt.trim();
@@ -182,6 +209,10 @@ export function AssistantPanel({
           <button onClick={onTestConnection} disabled={isBusy}>
             <Icon name="plug" size={15} />
             Test Ollama
+          </button>
+          <button type="button" className="secondary-settings-button" onClick={() => setShowCredits(true)}>
+            <Icon name="info" size={15} />
+            Open source credits
           </button>
           <p className="privacy-note">Local-only: prompts, images, chats, and diagrams are sent only to the configured Ollama endpoint.</p>
         </section>
@@ -277,6 +308,51 @@ export function AssistantPanel({
             </div>
           </footer>
         </>
+      )}
+      {showCredits && (
+        <div className="credits-backdrop" role="presentation" onMouseDown={() => setShowCredits(false)}>
+          <section
+            className="credits-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="credits-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <header className="credits-modal-header">
+              <div>
+                <p className="credits-kicker">Open source</p>
+                <h2 id="credits-title">Library credits</h2>
+              </div>
+              <button type="button" className="credits-close-button" onClick={() => setShowCredits(false)} aria-label="Close credits">
+                <Icon name="x" size={15} />
+              </button>
+            </header>
+            <div className="credits-scroll">
+              <p className="credits-intro">Archimedes Agent is built with these open source libraries and tools.</p>
+              <div className="credits-list">
+                {OPEN_SOURCE_CREDITS.map((credit) => (
+                  <article className="credit-card" key={credit.packageName}>
+                    <div>
+                      <h3>{credit.name}</h3>
+                      <p>{credit.note}</p>
+                    </div>
+                    <dl>
+                      <div>
+                        <dt>Package</dt>
+                        <dd>{credit.packageName}</dd>
+                      </div>
+                      <div>
+                        <dt>License</dt>
+                        <dd>{credit.license}</dd>
+                      </div>
+                    </dl>
+                    <a href={credit.url} target="_blank" rel="noreferrer">Visit project</a>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </section>
+        </div>
       )}
     </aside>
   );
