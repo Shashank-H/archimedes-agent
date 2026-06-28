@@ -235,6 +235,7 @@ export function AssistantPanel({
   const [prompt, setPrompt] = useState('');
   const [showSettings, setShowSettings] = useState(false);
   const [showCredits, setShowCredits] = useState(false);
+  const [showUsageLogsInfo, setShowUsageLogsInfo] = useState(false);
   const [providerConfigOpen, setProviderConfigOpen] = useState(!providerConfigurationIsTested);
   const [reviewTimingOpen, setReviewTimingOpen] = useState(false);
   const [showOllamaSetup, setShowOllamaSetup] = useState(false);
@@ -273,15 +274,16 @@ export function AssistantPanel({
   }, [providerConfigurationIsTested, providerConfigurationKey]);
 
   useEffect(() => {
-    if (!showCredits && !showOllamaSetup) return;
+    if (!showCredits && !showOllamaSetup && !showUsageLogsInfo) return;
     const handleKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key !== 'Escape') return;
       setShowCredits(false);
       setShowOllamaSetup(false);
+      setShowUsageLogsInfo(false);
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showCredits, showOllamaSetup]);
+  }, [showCredits, showOllamaSetup, showUsageLogsInfo]);
 
   useEffect(() => {
     return () => {
@@ -614,62 +616,40 @@ export function AssistantPanel({
               <span className="settings-switch-thumb" />
             </button>
           </div>
-          <div className="settings-option-card">
-            <span className="settings-option-icon" aria-hidden="true">
-              <Icon name="eye" size={16} />
-            </span>
-            <div className="settings-option-copy">
-              <div className="settings-option-title-row">
-                <span className="settings-option-title">Send anonymized usage logs</span>
-                <AppTooltip label="Allows privacy-aware PostHog events such as app load, review start/completion, and connection test status. Diagram content, prompts, API keys, and chat text are not sent.">
-                  <button type="button" className="settings-help-icon" aria-label="Anonymized usage logs information">
-                    <Icon name="info" size={13} />
-                  </button>
-                </AppTooltip>
-              </div>
-              <p className="settings-option-description">
-                Help improve Archimedes with anonymous product telemetry. Turn this off to opt out immediately.
-              </p>
-            </div>
-            <button
-              type="button"
-              className="settings-switch"
-              role="switch"
-              aria-checked={settings.sendAnonymizedUsageLogs}
-              aria-label="Send anonymized usage logs"
-              data-state={settings.sendAnonymizedUsageLogs ? 'on' : 'off'}
-              onClick={() =>
-                onSettingsChange({
-                  ...settings,
-                  sendAnonymizedUsageLogs: !settings.sendAnonymizedUsageLogs,
-                })
-              }
-            >
-              <span className="settings-switch-thumb" />
-            </button>
-          </div>
           <div className="settings-bottom-actions">
-            <AppTooltip label={settings.theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}>
-              <button
-                type="button"
-                className="theme-footer-button"
-                onClick={() => onSettingsChange({ ...settings, theme: settings.theme === 'dark' ? 'light' : 'dark' })}
-                aria-label={settings.theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-              >
-                <Icon name={settings.theme === 'dark' ? 'sun' : 'moon'} size={15} />
-                <span>{settings.theme === 'dark' ? 'Light theme' : 'Dark theme'}</span>
-              </button>
-            </AppTooltip>
+            <div className="settings-footer-controls">
+              <AppTooltip label={settings.theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}>
+                <button
+                  type="button"
+                  className="theme-footer-button"
+                  onClick={() => onSettingsChange({ ...settings, theme: settings.theme === 'dark' ? 'light' : 'dark' })}
+                  aria-label={settings.theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+                >
+                  <Icon name={settings.theme === 'dark' ? 'sun' : 'moon'} size={15} />
+                  <span>{settings.theme === 'dark' ? 'Light theme' : 'Dark theme'}</span>
+                </button>
+              </AppTooltip>
+            </div>
             <footer className="settings-footer">
-              <span>Built by <a href={X_PROFILE_URL} target="_blank" rel="noreferrer">Shashank Harikripa</a></span>
-              <nav className="settings-socials" aria-label="Project links">
-                <TooltipIconAction label="Visit project" href={PROJECT_GITHUB_URL} target="_blank" rel="noreferrer">
-                  <Icon name="github" size={16} />
-                </TooltipIconAction>
-                <TooltipIconAction label="Open source attributions" onClick={() => setShowCredits(true)}>
-                  <Icon name="eye" size={16} />
-                </TooltipIconAction>
-              </nav>
+              <div className="settings-footer-main">
+                <span className="settings-author-credit">Built by <a href={X_PROFILE_URL} target="_blank" rel="noreferrer">Shashank Harikripa</a></span>
+                <nav className="settings-socials" aria-label="Project links">
+                  <TooltipIconAction label="Visit project" href={PROJECT_GITHUB_URL} target="_blank" rel="noreferrer">
+                    <Icon name="github" size={16} />
+                  </TooltipIconAction>
+                  <TooltipIconAction label="Open source attributions" onClick={() => setShowCredits(true)}>
+                    <Icon name="eye" size={16} />
+                  </TooltipIconAction>
+                </nav>
+              </div>
+              <div className="usage-logs-row">
+                <p className="usage-logs-disclosure">
+                  Sends anonymized usage logs.{' '}
+                  <button type="button" onClick={() => setShowUsageLogsInfo(true)}>
+                    Learn more
+                  </button>
+                </p>
+              </div>
             </footer>
           </div>
         </section>
@@ -891,6 +871,62 @@ export function AssistantPanel({
                   <p>Copy and run it, then enter <code>gemma4:e4b</code> in the Model field. If you pick a different vision model from the catalogue, use its exact tag in both the pull command and the Model field.</p>
                 </div>
               </div>
+            </div>
+          </section>
+        </div>
+      )}
+      {showUsageLogsInfo && (
+        <div className="credits-backdrop" role="presentation" onMouseDown={() => setShowUsageLogsInfo(false)}>
+          <section
+            className="credits-modal usage-logs-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="usage-logs-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <header className="credits-modal-header">
+              <div>
+                <p className="credits-kicker">Privacy</p>
+                <h2 id="usage-logs-title">Anonymous usage logs</h2>
+              </div>
+              <button type="button" className="credits-close-button" onClick={() => setShowUsageLogsInfo(false)} aria-label="Close usage logs information">
+                <Icon name="x" size={15} />
+              </button>
+            </header>
+            <div className="usage-logs-modal-body">
+              <p className="usage-logs-assurance">
+                We never send your tokens, creds, API keys, prompts, chat text, or diagram content.
+              </p>
+              <p className="usage-logs-copy">
+                Archimedes only sends privacy-aware product telemetry through PostHog, like app load, review start/completion, and connection test status. Keeping this on helps us understand what works and improve the app.
+              </p>
+              <div className="usage-logs-toggle-row">
+                <div>
+                  <div className="usage-logs-toggle-title">
+                    Send anonymous usage logs <span>Recommended</span>
+                  </div>
+                  <p>Leaving this enabled helps prioritize fixes without exposing private data.</p>
+                </div>
+                <button
+                  type="button"
+                  className="settings-switch"
+                  role="switch"
+                  aria-checked={settings.sendAnonymizedUsageLogs}
+                  aria-label="Send anonymized usage logs"
+                  data-state={settings.sendAnonymizedUsageLogs ? 'on' : 'off'}
+                  onClick={() =>
+                    onSettingsChange({
+                      ...settings,
+                      sendAnonymizedUsageLogs: !settings.sendAnonymizedUsageLogs,
+                    })
+                  }
+                >
+                  <span className="settings-switch-thumb" />
+                </button>
+              </div>
+              {!settings.sendAnonymizedUsageLogs && (
+                <p className="usage-logs-opt-out-note">Usage logs are off. You can turn them back on anytime to help improve Archimedes.</p>
+              )}
             </div>
           </section>
         </div>
