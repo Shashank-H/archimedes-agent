@@ -22,6 +22,7 @@ export type LlmProviderMetadata = {
   defaultEndpoint: string;
   defaultModel: string;
   requiresApiKey: boolean;
+  usesOAuth?: boolean;
 };
 
 export type LlmModelOption = {

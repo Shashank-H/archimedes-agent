@@ -3,12 +3,22 @@ import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types';
 
 export type ThinkingLevel = 'off' | 'low' | 'medium' | 'high';
 export type AppTheme = 'light' | 'dark';
-export type LlmProvider = 'ollama' | 'openai-compatible';
+export type LlmProvider = 'ollama' | 'openai-compatible' | 'chatgpt-subscription';
+
+export type ChatGptSubscriptionCredentials = {
+  access: string;
+  refresh: string;
+  expires: number;
+  accountId: string;
+  email?: string;
+  name?: string;
+};
 
 export type LlmProviderConfiguration = {
   endpoint: string;
   apiKey: string;
   model: string;
+  chatGptSubscriptionCredentials?: ChatGptSubscriptionCredentials | null;
 };
 
 export type LlmImage = {
@@ -92,6 +102,12 @@ export const DEFAULT_SETTINGS: AppSettings = {
       endpoint: 'https://api.openai.com/v1',
       apiKey: '',
       model: 'gpt-4o-mini',
+    },
+    'chatgpt-subscription': {
+      endpoint: 'https://api.openai.com/v1',
+      apiKey: '',
+      model: 'gpt-5-codex',
+      chatGptSubscriptionCredentials: null,
     },
   },
   temperature: 0.3,

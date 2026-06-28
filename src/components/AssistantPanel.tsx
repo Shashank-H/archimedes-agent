@@ -6,6 +6,7 @@ import { TooltipIconAction } from './TooltipIconAction';
 import { useProviderSettings } from '../hooks/useProviderSettings';
 import { useModelSelection } from '../hooks/useModelSelection';
 import { useMaskedApiKeyInput } from '../hooks/useMaskedApiKeyInput';
+import { useChatGptSubscriptionAuth } from '../hooks/useChatGptSubscriptionAuth';
 import { useReviewTimingSettings } from '../hooks/useReviewTimingSettings';
 import { settingsValidationKey } from '../lib/settingsValidation';
 import type { AppSettings, ChatMessage, LlmProvider, ThinkingLevel } from '../types';
@@ -254,6 +255,7 @@ export function AssistantPanel({
   } = useProviderSettings(settings, onSettingsChange);
   const modelSelection = useModelSelection({ settings, onSettingsChange });
   const maskedApiKeyInput = useMaskedApiKeyInput({ settings, onSettingsChange });
+  const chatGptSubscriptionAuth = useChatGptSubscriptionAuth(settings, onSettingsChange);
   const reviewTiming = useReviewTimingSettings({ settings, onSettingsChange });
   const currentSiteOrigin = typeof window === 'undefined' ? 'https://this-site.example' : window.location.origin;
   const ollamaOriginInstructions = useOllamaOriginInstructions(currentSiteOrigin);
@@ -421,6 +423,41 @@ export function AssistantPanel({
                       onChange={maskedApiKeyInput.onChange}
                     />
                   </label>
+                )}
+                {providerMetadata.usesOAuth && (
+                  <div className="oauth-settings-card">
+                    <div>
+                      <strong>ChatGPT subscription sign-in</strong>
+                      <p>
+                        {chatGptSubscriptionAuth.credentials
+                          ? `Signed in as ${chatGptSubscriptionAuth.signedInLabel}.`
+                          : 'Use the Codex device-code OAuth flow for ChatGPT Plus/Pro access.'}
+                      </p>
+                    </div>
+                    {chatGptSubscriptionAuth.deviceCodeInfo && (
+                      <div className="oauth-device-code">
+                        <span>Enter this code at {chatGptSubscriptionAuth.deviceCodeInfo.verificationUri}</span>
+                        <strong>{chatGptSubscriptionAuth.deviceCodeInfo.userCode}</strong>
+                      </div>
+                    )}
+                    {chatGptSubscriptionAuth.error && <p className="settings-field-error">{chatGptSubscriptionAuth.error}</p>}
+                    <div className="oauth-actions">
+                      <button type="button" onClick={chatGptSubscriptionAuth.signIn} disabled={chatGptSubscriptionAuth.isSigningIn || isBusy}>
+                        <Icon name="plug" size={15} />
+                        {chatGptSubscriptionAuth.credentials ? 'Reconnect' : chatGptSubscriptionAuth.isSigningIn ? 'Waiting for login...' : 'Sign in'}
+                      </button>
+                      {chatGptSubscriptionAuth.isSigningIn && (
+                        <button type="button" className="secondary-settings-button" onClick={chatGptSubscriptionAuth.cancelSignIn}>
+                          Cancel
+                        </button>
+                      )}
+                      {chatGptSubscriptionAuth.credentials && (
+                        <button type="button" className="secondary-settings-button" onClick={chatGptSubscriptionAuth.signOut}>
+                          Sign out
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 )}
                 <label>
                   <span className="settings-inline-label">

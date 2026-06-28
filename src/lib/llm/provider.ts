@@ -1,5 +1,6 @@
 import type { AppSettings, LlmProvider, LlmProviderConfiguration } from '../../types';
 import { BaseLlmProvider, type LlmConnectionTestResult, type LlmModelOption, type LlmProviderMetadata, type LlmRuntime, type StreamLlmChatArgs } from './base';
+import { ChatGptSubscriptionProvider } from './chatgptSubscription';
 import { OllamaProvider } from './ollama';
 import { OpenAiCompatibleProvider } from './openai';
 
@@ -20,11 +21,13 @@ export class LlmProviderFactory {
   private readonly providerConstructors: Record<LlmProvider, ProviderConstructor> = {
     ollama: OllamaProvider,
     'openai-compatible': OpenAiCompatibleProvider,
+    'chatgpt-subscription': ChatGptSubscriptionProvider,
   };
 
   private readonly runtimes: Record<LlmProvider, LlmRuntime> = {
     ollama: new OllamaProvider(),
     'openai-compatible': new OpenAiCompatibleProvider(),
+    'chatgpt-subscription': new ChatGptSubscriptionProvider(),
   };
 
   createRuntime(settings: Pick<AppSettings, 'provider'>): LlmRuntime {
@@ -53,6 +56,7 @@ export class LlmProviderFactory {
       endpoint: metadata.defaultEndpoint,
       model: metadata.defaultModel,
       apiKey: '',
+      chatGptSubscriptionCredentials: provider === 'chatgpt-subscription' ? null : undefined,
     };
   }
 
@@ -71,6 +75,7 @@ export class LlmProviderFactory {
       endpoint: settings.endpoint,
       model: settings.model,
       apiKey: settings.apiKey,
+      chatGptSubscriptionCredentials: settings.providerConfigurations[settings.provider]?.chatGptSubscriptionCredentials,
     };
   }
 

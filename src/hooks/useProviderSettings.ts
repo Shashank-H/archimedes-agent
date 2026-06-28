@@ -16,8 +16,10 @@ export function useProviderSettings(settings: AppSettings, onSettingsChange: (se
     providerMetadata,
     endpointPlaceholder: providerMetadata.defaultEndpoint,
     modelPlaceholder: providerMetadata.defaultModel,
-    testConnectionLabel: 'Save',
-    modelInfoTooltip: 'Sends prompts, images, and diagram metadata to this model. Choose a vision-capable model.',
+    testConnectionLabel: providerMetadata.usesOAuth ? 'Save and test subscription' : 'Save',
+    modelInfoTooltip: providerMetadata.usesOAuth
+      ? 'Uses ChatGPT/Codex OAuth subscription access. Choose a vision-capable Codex/OpenAI model.'
+      : 'Sends prompts, images, and diagram metadata to this model. Choose a vision-capable model.',
     updateProvider,
   };
 }
