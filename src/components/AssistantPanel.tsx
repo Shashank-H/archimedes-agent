@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { MarkdownMessage } from './MarkdownMessage';
-import type { AppSettings, ChatMessage, ThinkingLevel } from '../types';
+import { useProviderSettings } from '../hooks/useProviderSettings';
+import type { AppSettings, ChatMessage, LlmProvider, ThinkingLevel } from '../types';
 
 type AssistantPanelProps = {
   messages: ChatMessage[];
@@ -96,7 +97,6 @@ function Icon({ name, size = 16 }: { name: IconName; size?: number }) {
 const PROJECT_GITHUB_URL = 'https://github.com/Shashank-H/archimedes-agent';
 const X_PROFILE_URL = 'https://x.com/ShashankH_';
 const OLLAMA_VISION_MODELS_URL = 'https://ollama.com/search?c=vision';
-
 const RECOMMENDED_VISION_MODELS = [
   {
     name: 'Gemma 4 E2B',
@@ -143,6 +143,15 @@ export function AssistantPanel({
   const [copiedModelCommand, setCopiedModelCommand] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const copyResetTimeoutRef = useRef<number | null>(null);
+  const {
+    providerOptions,
+    providerMetadata,
+    endpointPlaceholder,
+    modelPlaceholder,
+    testConnectionLabel,
+    privacyNote,
+    updateProvider,
+  } = useProviderSettings(settings, onSettingsChange);
 
   const resizePromptInput = () => {
     const textarea = textareaRef.current;
@@ -194,6 +203,10 @@ export function AssistantPanel({
       copyResetTimeoutRef.current = null;
     }, 900);
   };
+  
+  const updateEndpoint = (endpoint: string) => {
+    onSettingsChange({ ...settings, endpoint });
+  };
 
   return (
     <aside className="assistant-panel">
@@ -224,23 +237,49 @@ export function AssistantPanel({
       {showSettings ? (
         <section className="settings-section">
           <label>
-            Ollama endpoint
+            API shape
+            <select
+              value={settings.provider}
+              onChange={(event) => updateProvider(event.target.value as LlmProvider)}
+            >
+              {providerOptions.map((provider) => (
+                <option key={provider.id} value={provider.id}>{provider.label}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Endpoint / base URL
             <input
-              value={settings.ollamaEndpoint}
-              onChange={(event) => onSettingsChange({ ...settings, ollamaEndpoint: event.target.value })}
+              value={settings.endpoint}
+              placeholder={endpointPlaceholder}
+              onChange={(event) => updateEndpoint(event.target.value)}
             />
           </label>
           <label>
             Model
             <input
               value={settings.model}
+              placeholder={modelPlaceholder}
               onChange={(event) => onSettingsChange({ ...settings, model: event.target.value })}
             />
           </label>
-          <button type="button" className="secondary-settings-button" onClick={() => setShowOllamaSetup(true)}>
-            <Icon name="info" size={15} />
-            Setup local vision model
-          </button>
+          {providerMetadata.requiresApiKey && (
+            <label>
+              API key (optional)
+              <input
+                type="password"
+                value={settings.apiKey}
+                placeholder="Bearer token for providers that require one"
+                onChange={(event) => onSettingsChange({ ...settings, apiKey: event.target.value })}
+              />
+            </label>
+          )}
+          {settings.provider === 'ollama' && (
+            <button type="button" className="secondary-settings-button" onClick={() => setShowOllamaSetup(true)}>
+              <Icon name="info" size={15} />
+              Setup local vision model
+            </button>
+          )}
           <label>
             Temperature: {settings.temperature.toFixed(1)}
             <input
@@ -254,13 +293,50 @@ export function AssistantPanel({
           </label>
           <button onClick={onTestConnection} disabled={isBusy}>
             <Icon name="plug" size={15} />
-            Test Ollama
+            {testConnectionLabel}
           </button>
           <button type="button" className="secondary-settings-button" onClick={() => setShowCredits(true)}>
             <Icon name="info" size={15} />
             Open source credits
           </button>
-          <p className="privacy-note">Local-only: prompts, images, chats, and diagrams are sent only to the configured Ollama endpoint.</p>
+          <div className="settings-option-card">
+            <span className="settings-option-icon" aria-hidden="true">
+              <Icon name="message" size={16} />
+            </span>
+            <div className="settings-option-copy">
+              <div className="settings-option-title-row">
+                <span className="settings-option-title">Use chat history for auto reviews</span>
+                <span
+                  className="settings-help-icon"
+                  title="When enabled, previous chat and review messages are sent to the LLM during proactive reviews. This can consume more tokens."
+                  aria-label="Previous messages will be sent to the LLM and can consume more tokens."
+                >
+                  <Icon name="info" size={13} />
+                </span>
+              </div>
+              <p className="settings-option-description">
+                Off by default. Enable only if proactive reviews should consider the previous conversation.
+              </p>
+              <span className="settings-option-warning">May increase token usage</span>
+            </div>
+            <button
+              type="button"
+              className="settings-switch"
+              role="switch"
+              aria-checked={settings.includeHistoryInProactiveReviews}
+              aria-label="Include chat history in proactive reviews"
+              data-state={settings.includeHistoryInProactiveReviews ? 'on' : 'off'}
+              onClick={() =>
+                onSettingsChange({
+                  ...settings,
+                  includeHistoryInProactiveReviews: !settings.includeHistoryInProactiveReviews,
+                })
+              }
+            >
+              <span className="settings-switch-thumb" />
+            </button>
+          </div>
+          <p className="privacy-note">{privacyNote}</p>
           <div className="settings-bottom-actions">
             <button
               type="button"

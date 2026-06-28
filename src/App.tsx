@@ -1,20 +1,17 @@
-import { type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AssistantPanel } from './components/AssistantPanel';
 import { DiagramCanvas } from './components/DiagramCanvas';
 import { captureAnalyticsEvent } from './lib/analytics';
-import { exportDiagramImage } from './lib/diagramImage';
-import { formatDiagramSummary, meaningfulSceneSignature } from './lib/diagramSummary';
-import { ARCHITECTURE_REVIEWER_SYSTEM_PROMPT, buildReviewPrompt } from './lib/llm/prompts';
-import { streamOllamaChat, testOllamaConnection, type OllamaMessage } from './lib/llm/ollama';
-import { loadChat, loadScene, loadSettings, saveChat, saveScene, saveSettings } from './lib/storage';
+import { meaningfulSceneSignature } from './lib/diagramSummary';
+import { useLlmReviewContext } from './hooks/useLlmReviewContext';
+import { llmProviderFactory } from './lib/llm/provider';
+import { appStorage } from './lib/storage';
 import type { AppSettings, ChatMessage, DiagramSnapshot, ExcalidrawApi } from './types';
 import './styles.css';
 
 const AUTO_REVIEW_INTERVAL_MS = 20_000;
 const AUTO_REVIEW_MAX_WAIT_MS = 60_000;
 const MIN_ELEMENTS_FOR_PROACTIVE_REVIEW = 2;
-const SIDEBAR_WIDTH_KEY = 'archimedes-agent.sidebarWidth.v1';
-const LEGACY_SIDEBAR_WIDTH_KEY = 'gemma-diagram.sidebarWidth.v1';
 const DEFAULT_SIDEBAR_WIDTH = 420;
 const MIN_SIDEBAR_WIDTH = 320;
 const MAX_SIDEBAR_WIDTH = 720;
@@ -26,9 +23,7 @@ function clampSidebarWidth(width: number) {
 }
 
 function loadSidebarWidth() {
-  if (typeof localStorage === 'undefined') return DEFAULT_SIDEBAR_WIDTH;
-  const stored = Number(localStorage.getItem(SIDEBAR_WIDTH_KEY) ?? localStorage.getItem(LEGACY_SIDEBAR_WIDTH_KEY));
-  return clampSidebarWidth(Number.isFinite(stored) && stored > 0 ? stored : DEFAULT_SIDEBAR_WIDTH);
+  return clampSidebarWidth(appStorage.loadSidebarWidth(DEFAULT_SIDEBAR_WIDTH));
 }
 
 function id(prefix: string) {
@@ -41,12 +36,12 @@ function toErrorMessage(error: unknown) {
 }
 
 export default function App() {
-  const initialSnapshot = useMemo(() => loadScene(), []);
-  const [settings, setSettings] = useState<AppSettings>(() => loadSettings());
-  const [messages, setMessages] = useState<ChatMessage[]>(() => loadChat());
+  const initialSnapshot = useMemo(() => appStorage.loadScene(), []);
+  const [settings, setSettings] = useState<AppSettings>(() => appStorage.loadSettings());
+  const [messages, setMessages] = useState<ChatMessage[]>(() => appStorage.loadChat());
   const [sidebarWidth, setSidebarWidth] = useState(loadSidebarWidth);
   const [isBusy, setIsBusy] = useState(false);
-  const [status, setStatus] = useState('Local Ollama · gemma4:e4b');
+  const [status, setStatus] = useState(() => llmProviderFactory.getProviderStatus(settings));
 
   const apiRef = useRef<ExcalidrawApi | null>(null);
   const snapshotRef = useRef<DiagramSnapshot | null>(initialSnapshot);
@@ -54,16 +49,17 @@ export default function App() {
   const proactiveTimerRef = useRef<number | undefined>(undefined);
   const firstUnsentChangeAtRef = useRef<number | null>(null);
   const lastSentSignatureRef = useRef('');
+  const lastReviewSignatureRef = useRef('');
   const isBusyRef = useRef(false);
   const inFlightAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    saveSettings(settings);
-    setStatus(`Local Ollama · ${settings.model}`);
+    appStorage.saveSettings(settings);
+    setStatus(llmProviderFactory.getProviderStatus(settings));
   }, [settings]);
 
   useEffect(() => {
-    saveChat(messages);
+    appStorage.saveChat(messages);
   }, [messages]);
 
   useEffect(() => {
@@ -72,7 +68,7 @@ export default function App() {
       setSidebarWidth(nextWidth);
       return;
     }
-    localStorage.setItem(SIDEBAR_WIDTH_KEY, String(nextWidth));
+    appStorage.saveSidebarWidth(nextWidth);
   }, [sidebarWidth]);
 
   useEffect(() => {
@@ -84,6 +80,13 @@ export default function App() {
   useEffect(() => {
     isBusyRef.current = isBusy;
   }, [isBusy]);
+
+  const getCurrentSnapshot = useCallback(() => snapshotRef.current, []);
+  const buildLlmReviewMessages = useLlmReviewContext({ settings, messages, getSnapshot: getCurrentSnapshot });
+
+  const handleSettingsChange = useCallback((nextSettings: AppSettings) => {
+    setSettings(llmProviderFactory.withActiveConfiguration(nextSettings));
+  }, []);
 
   const updateMessages = (updater: (messages: ChatMessage[]) => ChatMessage[]) => {
     setMessages((current) => updater(current));
@@ -138,23 +141,9 @@ export default function App() {
     snapshotRef.current = nextSnapshot;
 
     window.clearTimeout(persistTimerRef.current);
-    persistTimerRef.current = window.setTimeout(() => saveScene(nextSnapshot), 600);
+    persistTimerRef.current = window.setTimeout(() => appStorage.saveScene(nextSnapshot), 600);
 
     scheduleProactiveReview();
-  };
-
-  const buildImageMessages = async (mode: 'manual' | 'proactive' | 'chat', userPrompt?: string): Promise<OllamaMessage[]> => {
-    const current = snapshotRef.current;
-    if (!current) throw new Error('No diagram is available yet. Draw something first.');
-
-    const diagram = await exportDiagramImage(current);
-    const metadata = formatDiagramSummary(diagram.summary);
-    const prompt = buildReviewPrompt({ userPrompt, metadata, mode, thinkingLevel: settings.thinkingLevel });
-
-    return [
-      { role: 'system', content: ARCHITECTURE_REVIEWER_SYSTEM_PROMPT },
-      { role: 'user', content: prompt, images: [diagram.base64] },
-    ];
   };
 
   const runAgentReview = async ({ mode, prompt }: { mode: 'manual' | 'proactive' | 'chat'; prompt?: string }) => {
@@ -166,6 +155,8 @@ export default function App() {
     }
 
     const liveElements = current.elements.filter((element) => !element.isDeleted);
+    const currentSignature = meaningfulSceneSignature(current);
+    const designChangedSincePreviousReview = mode === 'proactive' && Boolean(lastReviewSignatureRef.current) && currentSignature !== lastReviewSignatureRef.current;
     if (mode === 'proactive' && liveElements.length < MIN_ELEMENTS_FOR_PROACTIVE_REVIEW) return;
 
     captureAnalyticsEvent('diagram_review_started', {
@@ -192,27 +183,28 @@ export default function App() {
     });
 
     try {
-      const ollamaMessages = await buildImageMessages(mode, prompt);
-      await streamOllamaChat({
+      const llmMessages = await buildLlmReviewMessages({ mode, userPrompt: prompt, designChangedSincePreviousReview });
+      await llmProviderFactory.streamChat({
         settings,
-        messages: ollamaMessages,
+        messages: llmMessages,
         signal: controller.signal,
         onToken: (token) => appendToken(assistantId, token),
       });
+      lastReviewSignatureRef.current = currentSignature;
       if (mode === 'proactive' && current) {
-        lastSentSignatureRef.current = meaningfulSceneSignature(current);
+        lastSentSignatureRef.current = currentSignature;
         firstUnsentChangeAtRef.current = null;
       }
       captureAnalyticsEvent('diagram_review_completed', { mode });
-      setStatus(`Local Ollama · ${settings.model}`);
+      setStatus(llmProviderFactory.getProviderStatus(settings));
     } catch (error) {
       const message = toErrorMessage(error);
       appendToken(
         assistantId,
-        `\n\n⚠️ ${message}\n\nIf this mentions images or unsupported input, verify that Ollama model \`${settings.model}\` supports vision payloads.`,
+        `\n\n⚠️ ${message}\n\nIf this mentions images or unsupported input, verify that the selected ${llmProviderFactory.getProviderName(settings.provider)} model \`${settings.model}\` supports vision payloads.`,
       );
       captureAnalyticsEvent('diagram_review_failed', { mode });
-      setStatus('Ollama error');
+      setStatus(`${llmProviderFactory.getProviderName(settings.provider)} error`);
     } finally {
       setIsBusy(false);
       inFlightAbortRef.current = null;
@@ -228,19 +220,22 @@ export default function App() {
   };
 
   const handleTestConnection = async () => {
-    setStatus('Testing Ollama...');
+    const providerName = llmProviderFactory.getProviderName(settings.provider);
+    setStatus(`Testing ${providerName}...`);
     try {
-      const result = await testOllamaConnection(settings);
-      setStatus(`Connected to Ollama · ${settings.model}`);
-      captureAnalyticsEvent('ollama_connection_tested', { ok: true, supports_vision: result.supportsVision });
-      const visionNote = result.supportsVision
-        ? 'The selected model advertises vision support.'
-        : 'Warning: the selected model does not advertise vision support in Ollama capabilities, so image-based review may fail or require a vision-capable local model/tag.';
-      appendMessage({ id: id('status'), role: 'assistant', content: `Connected to local Ollama at ${settings.ollamaEndpoint}. Default model: ${settings.model}. ${visionNote}`, createdAt: Date.now(), kind: result.supportsVision ? 'status' : 'error' });
+      const result = await llmProviderFactory.testConnection(settings);
+      setStatus(`Connected to ${providerName} · ${settings.model}`);
+      captureAnalyticsEvent('llm_connection_tested', { provider: settings.provider, ok: true, supports_vision: result.supportsVision });
+      const visionNote = result.visionSupportKnown
+        ? result.supportsVision
+          ? 'The selected model advertises vision support.'
+          : 'Warning: the selected model does not advertise vision support, so image-based review may fail or require a vision-capable model/tag.'
+        : 'Vision support could not be verified from the provider model list; ensure the selected model supports image inputs.';
+      appendMessage({ id: id('status'), role: 'assistant', content: `Connected to ${providerName} at ${settings.endpoint}. Model: ${settings.model}. ${visionNote}`, createdAt: Date.now(), kind: result.supportsVision ? 'status' : 'error' });
     } catch (error) {
-      const message = `Cannot reach local Ollama at ${settings.ollamaEndpoint}. Start it with \`ollama serve\` and ensure \`${settings.model}\` is available. (${toErrorMessage(error)})`;
-      captureAnalyticsEvent('ollama_connection_tested', { ok: false });
-      setStatus('Ollama unavailable');
+      const message = `Cannot reach ${providerName} at ${settings.endpoint}. Ensure the endpoint, model, and API key are correct. (${toErrorMessage(error)})`;
+      captureAnalyticsEvent('llm_connection_tested', { provider: settings.provider, ok: false });
+      setStatus(`${providerName} unavailable`);
       appendMessage({ id: id('error'), role: 'assistant', content: message, createdAt: Date.now(), kind: 'error' });
     }
   };
@@ -333,7 +328,7 @@ export default function App() {
         status={status}
         onSendChat={handleSendChat}
         onReview={handleReview}
-        onSettingsChange={setSettings}
+        onSettingsChange={handleSettingsChange}
         onClearChat={() => {
           captureAnalyticsEvent('chat_cleared');
           setMessages([]);

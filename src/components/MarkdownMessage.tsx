@@ -4,6 +4,10 @@ type MarkdownMessageProps = {
   content: string;
 };
 
+type MessageSegment =
+  | { type: 'markdown'; content: string }
+  | { type: 'thinking'; content: string; complete: boolean };
+
 function parseInline(text: string): ReactNode[] {
   const nodes: ReactNode[] = [];
   const pattern = /(\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`|\[([^\]]+)\]\((https?:\/\/[^\s)]+)\))/g;
@@ -35,7 +39,39 @@ function renderParagraph(lines: string[], key: string) {
   return <p key={key}>{parseInline(lines.join(' '))}</p>;
 }
 
-export function MarkdownMessage({ content }: MarkdownMessageProps) {
+function splitThinkingSegments(content: string): MessageSegment[] {
+  const segments: MessageSegment[] = [];
+  const pattern = /<think\b[^>]*>/gi;
+  let cursor = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(content))) {
+    if (match.index > cursor) {
+      segments.push({ type: 'markdown', content: content.slice(cursor, match.index) });
+    }
+
+    const thinkingStart = pattern.lastIndex;
+    const closeMatch = /<\/think>/i.exec(content.slice(thinkingStart));
+    if (!closeMatch) {
+      segments.push({ type: 'thinking', content: content.slice(thinkingStart), complete: false });
+      cursor = content.length;
+      break;
+    }
+
+    const thinkingEnd = thinkingStart + closeMatch.index;
+    segments.push({ type: 'thinking', content: content.slice(thinkingStart, thinkingEnd), complete: true });
+    cursor = thinkingEnd + closeMatch[0].length;
+    pattern.lastIndex = cursor;
+  }
+
+  if (cursor < content.length) {
+    segments.push({ type: 'markdown', content: content.slice(cursor) });
+  }
+
+  return segments.filter((segment) => segment.content.trim().length > 0);
+}
+
+function renderMarkdownContent(content: string) {
   const lines = content.replace(/\r\n/g, '\n').split('\n');
   const blocks: ReactNode[] = [];
   let paragraph: string[] = [];
@@ -106,5 +142,34 @@ export function MarkdownMessage({ content }: MarkdownMessageProps) {
   }
 
   flushParagraph();
-  return <div className="markdown-content">{blocks}</div>;
+  return blocks;
+}
+
+function ThinkingDisclosure({ content, complete }: { content: string; complete: boolean }) {
+  return (
+    <details className="thinking-disclosure">
+      <summary>
+        <span>{complete ? 'Show reasoning' : 'Reasoning in progress'}</span>
+      </summary>
+      <div className="thinking-disclosure-content">
+        {renderMarkdownContent(content)}
+      </div>
+    </details>
+  );
+}
+
+export function MarkdownMessage({ content }: MarkdownMessageProps) {
+  const segments = splitThinkingSegments(content);
+
+  return (
+    <div className="markdown-content">
+      {segments.map((segment, index) => {
+        if (segment.type === 'thinking') {
+          return <ThinkingDisclosure key={`thinking-${index}`} content={segment.content} complete={segment.complete} />;
+        }
+
+        return <div key={`markdown-${index}`}>{renderMarkdownContent(segment.content)}</div>;
+      })}
+    </div>
+  );
 }

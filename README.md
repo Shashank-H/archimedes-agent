@@ -6,7 +6,7 @@
 
 A local-first desktop/web prototype for drawing system-design diagrams with Excalidraw and brainstorming with a right-side Archimedes assistant.
 
-The app embeds Excalidraw as the diagramming surface and sends an exported diagram image to a local Ollama model (`gemma4:e4b` by default). The assistant reviews the diagram, asks questions, highlights risks, and suggests improvements.
+The app embeds Excalidraw as the diagramming surface and sends an exported diagram image to a vision-capable LLM. It defaults to local Ollama (`gemma4:e4b`) and can also target OpenAI-compatible chat-completions endpoints. The assistant reviews the diagram, asks questions, highlights risks, and suggests improvements.
 
 ## Current status
 
@@ -18,11 +18,11 @@ Implemented and working in browser/dev mode:
 - Manual diagram review button.
 - User chat with current diagram image included.
 - Proactive review after meaningful diagram changes and inactivity.
-- Ollama `/api/chat` streaming client.
+- Ollama `/api/chat` streaming client and OpenAI-compatible `/chat/completions` streaming client.
 - Image-first prompt flow using exported Excalidraw PNG/WebP base64.
 - Lightweight Excalidraw metadata summary as secondary context.
 - Local persistence for diagram scene, chat, and settings.
-- Settings UI for Ollama endpoint, model, temperature, and proactive review.
+- Settings UI for API shape/provider, endpoint/base URL, model, optional API key, temperature, and proactive review.
 - Verified local `gemma4:e4b` can inspect real PNG images through Ollama.
 
 Not yet complete:
@@ -40,7 +40,7 @@ The assistant is image-first:
 1. User draws in Excalidraw.
 2. On manual review, chat send, or proactive trigger, the app exports the current diagram to an image.
 3. The app converts the image Blob to base64.
-4. It sends the base64 image to Ollama in the `images` array of a `/api/chat` request.
+4. It sends the base64 image to the selected provider: Ollama uses the `images` array on `/api/chat`; OpenAI-compatible providers use a multimodal `image_url` data URL on `/chat/completions`.
 5. It also sends a small text metadata summary: labels, arrows, element count, groups, unlabeled components.
 6. Archimedes streams a response into the assistant panel.
 
@@ -52,8 +52,7 @@ For browser/dev mode:
 
 - Node.js 24+
 - npm
-- Ollama running locally
-- `gemma4:e4b` installed in Ollama
+- Either Ollama running locally with a vision-capable model, or an OpenAI-compatible endpoint with a vision-capable model
 
 For desktop packaging:
 
@@ -106,6 +105,26 @@ Model: gemma4:e4b
 
 You can change these in the assistant panel settings.
 
+## OpenAI-compatible setup
+
+In **Settings**, change **API shape** to **OpenAI-compatible**. Use one endpoint/base URL field:
+
+```txt
+Endpoint / base URL: https://api.openai.com/v1
+Model: gpt-4o-mini (or another vision-capable chat model)
+API key: your provider token, if required
+```
+
+Other compatible providers can work if they implement streaming `POST /chat/completions` with OpenAI-style Server-Sent Events and multimodal message content. For local servers such as LM Studio or vLLM, set the base URL they expose, for example:
+
+```txt
+Endpoint / base URL: http://localhost:1234/v1
+Model: your-vision-model
+API key: optional, depending on the server
+```
+
+Important: Archimedes sends the current diagram as an image, so the selected model must support vision/image input. Text-only models may connect successfully but fail during review or ignore the diagram image.
+
 ## Validate image support
 
 We verified that `gemma4:e4b` can read real PNG payloads through Ollama. See:
@@ -137,7 +156,7 @@ npm run build
 
 For local/private builds, leave `VITE_POSTHOG_ENABLED=false` or unset. See `.env.example` for the available variables.
 
-The integration intentionally disables autocapture and session recording. It only sends lightweight product events such as app load, review start/completion/failure, Ollama connection test result, and chat clear. Diagram images, prompts, chats, Ollama endpoints, and full scene data are not captured.
+The integration intentionally disables autocapture and session recording. It only sends lightweight product events such as app load, review start/completion/failure, provider connection test result, and chat clear. Diagram images, prompts, chats, endpoints, API keys, and full scene data are not captured.
 
 ## Tauri desktop development
 

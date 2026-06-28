@@ -26,7 +26,7 @@ export function buildReviewPrompt(args: {
         : 'Continue the conversation using the diagram image and metadata when relevant. Keep the answer compact.';
   const thinkingInstruction =
     args.thinkingLevel === 'off'
-      ? 'Thinking level: off. Answer directly.'
+      ? 'Thinking level: off. Answer directly. Do not include hidden reasoning, chain-of-thought, scratchpad text, or <think>...</think> blocks in the response.'
       : `Thinking level: ${args.thinkingLevel}. Use that amount of internal reasoning, but only show the final concise answer.`;
 
   return `${modeInstruction}\n${thinkingInstruction}\n\nUser request: ${base}\n\nSupporting Excalidraw metadata (secondary to the image):\n${args.metadata}`;
