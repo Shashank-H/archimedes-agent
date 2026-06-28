@@ -170,37 +170,40 @@ function useOllamaOriginInstructions(siteOrigin: string) {
   if (detectedOsRef.current === null) detectedOsRef.current = detectBrowserOs();
 
   const [selectedOs, setSelectedOs] = useState<LocalOllamaOs>(detectedOsRef.current);
-  const instructions: Record<LocalOllamaOs, { command: string; description: string; quitSteps: string[]; quitCommand?: string; note: string }> = {
+  const instructions: Record<LocalOllamaOs, { backgroundCommand: string; permanentCommand: string; permanentNote: string; description: string; quitSteps: string[]; quitCommand?: string }> = {
     windows: {
-      command: `$env:OLLAMA_ORIGINS="${siteOrigin}"; ollama serve`,
-      description: 'Open PowerShell, make sure any already-running Ollama app is closed, then run this command.',
+      backgroundCommand: `Start-Process powershell -WindowStyle Hidden -ArgumentList '-NoProfile -Command "$env:OLLAMA_ORIGINS=\"${siteOrigin}\"; ollama serve"'`,
+      permanentCommand: `setx OLLAMA_ORIGINS "${siteOrigin}"`,
+      permanentNote: 'Recommended. After running setx, quit and reopen Ollama. Windows applies setx values only to new processes.',
+      description: 'Use these steps to permanently allow this site, then reopen Ollama normally.',
       quitSteps: [
         'Click the Ollama llama icon in the Windows system tray and choose Quit, if it is visible.',
         'If it is not visible, open Task Manager and end any Ollama or ollama.exe process.',
         'PowerShell alternative:',
       ],
       quitCommand: 'taskkill /IM ollama.exe /F',
-      note: 'Keep this PowerShell window open while you use Archimedes, or add OLLAMA_ORIGINS to your Ollama service environment.',
     },
     mac: {
-      command: `OLLAMA_ORIGINS="${siteOrigin}" ollama serve`,
-      description: 'Open Terminal, make sure any already-running Ollama app is closed, then run this command.',
+      backgroundCommand: `mkdir -p ~/.ollama && nohup env OLLAMA_ORIGINS="${siteOrigin}" ollama serve > ~/.ollama/ollama.log 2>&1 &`,
+      permanentCommand: `launchctl setenv OLLAMA_ORIGINS "${siteOrigin}"`,
+      permanentNote: 'Recommended for the Ollama desktop app. After running launchctl, quit and reopen the Ollama app. You may need to run it again after a reboot.',
+      description: 'Use these steps to allow this site for the Ollama app, then reopen Ollama normally.',
       quitSteps: [
         'Click the Ollama llama icon in the macOS menu bar and choose Quit Ollama.',
         'If the menu bar icon is not available, run the terminal command below to stop the background process.',
       ],
       quitCommand: 'pkill ollama',
-      note: 'Keep this Terminal window open while you use Archimedes. If you launch Ollama another way, set the same OLLAMA_ORIGINS value there.',
     },
     linux: {
-      command: `OLLAMA_ORIGINS="${siteOrigin}" ollama serve`,
-      description: 'Open a terminal, stop any existing Ollama process or service, then run this command.',
+      backgroundCommand: `mkdir -p ~/.ollama && nohup env OLLAMA_ORIGINS="${siteOrigin}" ollama serve > ~/.ollama/ollama.log 2>&1 &`,
+      permanentCommand: `sudo mkdir -p /etc/systemd/system/ollama.service.d && printf '[Service]\nEnvironment="OLLAMA_ORIGINS=${siteOrigin}"\n' | sudo tee /etc/systemd/system/ollama.service.d/override.conf && sudo systemctl daemon-reload && sudo systemctl restart ollama`,
+      permanentNote: 'Recommended when Ollama is installed as a systemd service. It writes a service override and restarts Ollama automatically.',
+      description: 'Use these steps to permanently allow this site for the Ollama service.',
       quitSteps: [
         'If Ollama is running as a systemd service, stop it first.',
         'If you started Ollama manually, stop the process instead.',
       ],
       quitCommand: 'sudo systemctl stop ollama || pkill ollama',
-      note: 'If Ollama runs through systemd, add this origin as an OLLAMA_ORIGINS environment variable in the service override and restart Ollama.',
     },
   };
 
@@ -791,9 +794,21 @@ export function AssistantPanel({
                           </ul>
                           {ollamaOriginInstructions.selectedInstruction.quitCommand && renderCopyableCommand(ollamaOriginInstructions.selectedInstruction.quitCommand)}
                         </div>
-                        <p>Then start Ollama with this site's origin allowed:</p>
-                        {renderCopyableCommand(ollamaOriginInstructions.selectedInstruction.command)}
-                        <p>{ollamaOriginInstructions.selectedInstruction.note}</p>
+                        <div className="ollama-persist-instructions">
+                          <strong>Add the origin permanently</strong>
+                          <p>{ollamaOriginInstructions.selectedInstruction.permanentNote}</p>
+                          {renderCopyableCommand(ollamaOriginInstructions.selectedInstruction.permanentCommand)}
+                          <strong className="ollama-inline-heading">
+                            <span>Temporary: run Ollama in the background</span>
+                            <AppTooltip label="This starts Ollama once with the allowed site, without saving the setting permanently. You may need to run it again after Ollama stops, you sign out, or your computer restarts.">
+                              <button type="button" className="settings-help-icon" aria-label="Temporary background Ollama information">
+                                <Icon name="info" size={13} />
+                              </button>
+                            </AppTooltip>
+                          </strong>
+                          <p>Use this only if you do not want to permanently save the allowed site.</p>
+                          {renderCopyableCommand(ollamaOriginInstructions.selectedInstruction.backgroundCommand)}
+                        </div>
                       </div>
                     </div>
                   </article>

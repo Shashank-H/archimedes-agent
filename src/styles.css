@@ -1385,7 +1385,8 @@ button.ollama-os-tab:hover:not(:disabled) {
   gap: 10px;
   margin-top: 10px;
 }
-.ollama-quit-instructions {
+.ollama-quit-instructions,
+.ollama-persist-instructions {
   display: grid;
   gap: 8px;
   padding: 12px;
@@ -1393,9 +1394,22 @@ button.ollama-os-tab:hover:not(:disabled) {
   border-radius: 10px;
   background: var(--canvas-soft-2);
 }
-.ollama-quit-instructions strong {
+.ollama-persist-instructions {
+  margin-top: 2px;
+}
+.ollama-quit-instructions strong,
+.ollama-persist-instructions strong {
   color: var(--ink);
   font-size: 13px;
+}
+.ollama-inline-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ollama-inline-heading .settings-help-icon {
+  width: 20px;
+  height: 20px;
 }
 .ollama-quit-instructions ul {
   margin: 0;
