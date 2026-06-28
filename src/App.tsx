@@ -1,7 +1,7 @@
 import { type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AssistantPanel } from './components/AssistantPanel';
 import { DiagramCanvas } from './components/DiagramCanvas';
-import { captureAnalyticsEvent } from './lib/analytics';
+import { captureAnalyticsEvent, setAnalyticsUsageConsent } from './lib/analytics';
 import { meaningfulSceneSignature } from './lib/diagramSummary';
 import { useLlmReviewContext } from './hooks/useLlmReviewContext';
 import { llmProviderFactory } from './lib/llm/provider';
@@ -56,6 +56,7 @@ export default function App() {
 
   useEffect(() => {
     appStorage.saveSettings(settings);
+    setAnalyticsUsageConsent(settings.sendAnonymizedUsageLogs);
     setStatus(llmProviderFactory.getProviderStatus(settings));
   }, [settings]);
 

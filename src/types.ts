@@ -33,6 +33,7 @@ export type AppSettings = {
   theme: AppTheme;
   autoReview: boolean;
   includeHistoryInProactiveReviews: boolean;
+  sendAnonymizedUsageLogs: boolean;
   proactiveDelayMs: number;
   proactiveCooldownMs: number;
   providerConfigurationTestedKey: string;
@@ -98,6 +99,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   theme: 'light',
   autoReview: true,
   includeHistoryInProactiveReviews: false,
+  sendAnonymizedUsageLogs: true,
   proactiveDelayMs: 12_000,
   proactiveCooldownMs: 60_000,
   providerConfigurationTestedKey: '',
