@@ -744,7 +744,9 @@ body.is-resizing-sidebar .sidebar-resizer::after { opacity: 1; }
 .proactive-button { border-color: #f3d494; background: #fffbeb; color: #8a4b05; }
 .manual-button { border-color: #b8ead7; background: #f0fdf4; color: #0f6b3d; }
 .composer button,
-.settings-section > button {
+.settings-section > button,
+.provider-config-content > button,
+.provider-config-actions > button {
   height: 36px;
   min-height: 36px;
   border-radius: 100px;
@@ -753,7 +755,8 @@ body.is-resizing-sidebar .sidebar-resizer::after { opacity: 1; }
   justify-content: center;
   gap: 7px;
 }
-.settings-section > button.secondary-settings-button {
+.settings-section > button.secondary-settings-button,
+.provider-config-content > button.secondary-settings-button {
   background: var(--canvas);
   color: var(--ink);
   border-color: var(--hairline);
@@ -772,7 +775,8 @@ body.is-resizing-sidebar .sidebar-resizer::after { opacity: 1; }
   background: rgba(238, 0, 0, 0.10);
 }
 .send-button,
-.settings-section > button {
+.settings-section > button,
+.provider-config-actions > button {
   min-width: 88px;
   background: var(--ink);
   color: var(--on-primary);
@@ -801,8 +805,10 @@ body.is-resizing-sidebar .sidebar-resizer::after { opacity: 1; }
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16);
 }
 .send-button:hover:not(:disabled),
-.settings-section > button:hover:not(:disabled) { background: #000; border-color: #000; color: var(--on-primary); }
-.settings-section > button.secondary-settings-button:hover:not(:disabled) {
+.settings-section > button:hover:not(:disabled),
+.provider-config-actions > button:hover:not(:disabled) { background: #000; border-color: #000; color: var(--on-primary); }
+.settings-section > button.secondary-settings-button:hover:not(:disabled),
+.provider-config-content > button.secondary-settings-button:hover:not(:disabled) {
   background: var(--canvas-soft-2);
   border-color: #d4d4d4;
   color: var(--ink);
@@ -825,6 +831,69 @@ body.is-resizing-sidebar .sidebar-resizer::after { opacity: 1; }
   font-size: 14px;
   line-height: 20px;
   letter-spacing: -0.28px;
+}
+.settings-inline-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.provider-config-accordion {
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  background: var(--canvas);
+  box-shadow: var(--shadow-1);
+  overflow: visible;
+}
+.provider-config-summary {
+  width: 100%;
+  min-height: 52px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: var(--ink);
+  box-shadow: none;
+  text-align: left;
+}
+.provider-config-summary span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.provider-config-summary strong {
+  font-size: 14px;
+  line-height: 18px;
+  letter-spacing: -0.28px;
+}
+.provider-config-summary small {
+  overflow: hidden;
+  color: var(--mute);
+  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+  font-size: 11px;
+  line-height: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.provider-config-summary svg {
+  flex: 0 0 auto;
+  transition: transform 180ms ease;
+}
+.provider-config-accordion[data-open="true"] .provider-config-summary svg {
+  transform: rotate(180deg);
+}
+.provider-config-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0 14px 14px;
+}
+.provider-config-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 .settings-section input[type="range"] { accent-color: var(--ink); padding: 0; }
 .checkbox-row { flex-direction: row !important; align-items: center; }
@@ -868,12 +937,23 @@ body.is-resizing-sidebar .sidebar-resizer::after { opacity: 1; }
 .settings-help-icon {
   width: 18px;
   height: 18px;
+  min-height: 18px;
   display: inline-grid;
   place-items: center;
+  padding: 0;
+  border: 0;
   color: var(--mute);
+  background: transparent;
   border-radius: 999px;
+  box-shadow: none;
+  transform: none;
 }
-.settings-help-icon:hover { color: var(--ink); background: var(--canvas); }
+.settings-help-icon:hover:not(:disabled),
+.settings-help-icon:focus-visible {
+  color: var(--ink);
+  background: var(--canvas);
+}
+.settings-help-icon:active:not(:disabled) { transform: none; }
 .settings-option-description {
   margin: 0;
   color: var(--body);
@@ -986,18 +1066,57 @@ body.is-resizing-sidebar .sidebar-resizer::after { opacity: 1; }
   color: var(--link);
   border-color: currentColor;
 }
-.settings-footer .icon-link {
+.settings-footer :is(a, button).tooltip-icon-action {
+  appearance: none;
   width: 28px;
   height: 28px;
+  min-width: 28px;
+  min-height: 28px;
   display: inline-grid;
   place-items: center;
+  padding: 0;
   border: 1px solid var(--hairline);
   border-radius: 999px;
   background: var(--canvas);
+  color: var(--ink);
+  box-shadow: none;
+  line-height: 1;
+  text-decoration: none;
+  transform: none;
 }
-.settings-footer .icon-link:hover {
+.settings-footer :is(a, button).tooltip-icon-action:hover:not(:disabled),
+.settings-footer :is(a, button).tooltip-icon-action:focus-visible {
   background: var(--canvas-soft-2);
+  color: var(--link);
   border-color: currentColor;
+}
+.settings-footer :is(a, button).tooltip-icon-action:active:not(:disabled) {
+  transform: none;
+}
+.app-tooltip {
+  z-index: 200;
+  max-width: 220px;
+  padding: 6px 8px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  background: var(--ink);
+  color: var(--on-primary);
+  box-shadow: var(--shadow-2);
+  font-family: Geist, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 15px;
+  letter-spacing: -0.1px;
+  text-align: center;
+  user-select: none;
+  animation: tooltip-in 120ms ease-out;
+}
+.app-tooltip-arrow {
+  fill: var(--ink);
+}
+@keyframes tooltip-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 .credits-backdrop {
   position: fixed;
@@ -1292,11 +1411,15 @@ button.model-copy-button:hover:not(:disabled) {
 .theme-dark .composer-input-wrap:focus-within { background: rgba(23, 23, 23, 0.96); }
 .theme-dark button:hover:not(:disabled) { background: #171717; border-color: #3f3f3f; }
 .theme-dark .send-button,
-.theme-dark .settings-section > button { background: #fff; border-color: #fff; color: #171717; }
-.theme-dark .settings-section > button.secondary-settings-button { background: #0a0a0a; border-color: #2a2a2a; color: #ffffff; }
+.theme-dark .settings-section > button,
+.theme-dark .provider-config-actions > button { background: #fff; border-color: #fff; color: #171717; }
+.theme-dark .settings-section > button.secondary-settings-button,
+.theme-dark .provider-config-content > button.secondary-settings-button { background: #0a0a0a; border-color: #2a2a2a; color: #ffffff; }
 .theme-dark .send-button:hover:not(:disabled),
-.theme-dark .settings-section > button:hover:not(:disabled) { background: #eaeaea; border-color: #eaeaea; }
-.theme-dark .settings-section > button.secondary-settings-button:hover:not(:disabled) { background: #171717; border-color: #3f3f3f; color: #ffffff; }
+.theme-dark .settings-section > button:hover:not(:disabled),
+.theme-dark .provider-config-actions > button:hover:not(:disabled) { background: #eaeaea; border-color: #eaeaea; }
+.theme-dark .settings-section > button.secondary-settings-button:hover:not(:disabled),
+.theme-dark .provider-config-content > button.secondary-settings-button:hover:not(:disabled) { background: #171717; border-color: #3f3f3f; color: #ffffff; }
 .theme-dark .review-button { background: #0a0a0a; border-color: #2a2a2a; }
 .theme-dark .thinking-control {
   background: rgba(23, 23, 23, 0.82);

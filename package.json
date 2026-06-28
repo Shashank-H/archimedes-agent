@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@excalidraw/excalidraw": "^0.18.0",
+    "@radix-ui/react-tooltip": "^1.2.10",
     "@tauri-apps/api": "^2.8.0",
     "posthog-js": "^1.395.0",
     "react": "^19.0.0",

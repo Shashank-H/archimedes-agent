@@ -238,7 +238,7 @@ export default function App() {
   };
 
   const handleTestConnection = async () => {
-    if (isBusy) return;
+    if (isBusy) return false;
     const providerName = llmProviderFactory.getProviderName(settings.provider);
     const validationKey = settingsValidationKey(settings);
     setIsBusy(true);
@@ -260,6 +260,7 @@ export default function App() {
         createdAt: Date.now(),
         kind: result.supportsVision ? 'status' : 'error',
       });
+      return true;
     } catch (error) {
       const errorText = toErrorMessage(error);
       const message = `Settings were saved, but ${providerName} could not complete a chat test with model \`${settings.model}\`. Fix the highlighted field/configuration before using this model. (${errorText})`;
@@ -267,6 +268,7 @@ export default function App() {
       captureAnalyticsEvent('llm_connection_tested', { provider: settings.provider, ok: false });
       setStatus('Saved with model error');
       appendMessage({ id: id('error'), role: 'assistant', content: message, createdAt: Date.now(), kind: 'error' });
+      return false;
     } finally {
       setIsBusy(false);
     }

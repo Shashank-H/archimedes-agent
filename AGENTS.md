@@ -2,6 +2,8 @@
 
 ## React page/component changes
 
+- When adding tooltips/popovers/menus, use a shared component or established UI library primitive (for example Radix) instead of one-off CSS pseudo-elements or native `title` tooltips; keep tooltip styling centralized so all tooltips look consistent and theme-appropriate.
+- When adding a new third-party library/package, update the in-app open source attributions list in the same change.
 - When creating or modifying existing pages/components, prefer custom hooks for stateful and business logic.
 - Keep component markup minimal: components should primarily call hooks, read returned state/actions, and render UI.
 - Move request orchestration, settings decisions, derived state, side effects, and testable workflows into hooks rather than embedding them directly in component files.

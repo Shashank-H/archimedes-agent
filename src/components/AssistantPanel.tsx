@@ -1,6 +1,8 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { MarkdownMessage } from './MarkdownMessage';
+import { AppTooltip } from './AppTooltip';
 import { CustomSelect } from './CustomSelect';
+import { TooltipIconAction } from './TooltipIconAction';
 import { useProviderSettings } from '../hooks/useProviderSettings';
 import { useModelSelection } from '../hooks/useModelSelection';
 import { useMaskedApiKeyInput } from '../hooks/useMaskedApiKeyInput';
@@ -16,7 +18,7 @@ type AssistantPanelProps = {
   onReview: (prompt?: string) => void;
   onSettingsChange: (settings: AppSettings) => void;
   onClearChat: () => void;
-  onTestConnection: () => void;
+  onTestConnection: () => boolean | Promise<boolean>;
 };
 
 type IconName =
@@ -37,6 +39,7 @@ type IconName =
   | 'info'
   | 'x'
   | 'github'
+  | 'eye'
   | 'copy'
   | 'check'
   | 'chevronDown';
@@ -89,6 +92,8 @@ function Icon({ name, size = 16 }: { name: IconName; size?: number }) {
       return <svg {...common}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>;
     case 'github':
       return <svg {...common}><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.1-1.3-.3-2.6-1.2-3.6.2-1.2.2-2.5-.1-3.6 0 0-1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 1.5 5.5 1.8 5.5 1.8c-.3 1.1-.4 2.4-.1 3.6A5.3 5.3 0 0 0 4.2 9c0 3.5 3 5.5 6 5.5-.5.5-.8 1.2-.9 2"/><path d="M9 18c-4.5 2-5-2-7-2"/></svg>;
+    case 'eye':
+      return <svg {...common}><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>;
     case 'copy':
       return <svg {...common}><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>;
     case 'check':
@@ -130,6 +135,7 @@ const OPEN_SOURCE_CREDITS = [
   { name: 'Excalidraw', packageName: '@excalidraw/excalidraw', license: 'MIT', url: 'https://github.com/excalidraw/excalidraw', note: 'Embeddable whiteboard and diagram canvas.' },
   { name: 'Tauri', packageName: '@tauri-apps/api / @tauri-apps/cli', license: 'Apache-2.0 OR MIT', url: 'https://tauri.app', note: 'Desktop app runtime, APIs, and build tooling.' },
   { name: 'PostHog JS', packageName: 'posthog-js', license: 'See package LICENSE', url: 'https://posthog.com/docs/libraries/js', note: 'Privacy-aware product analytics client.' },
+  { name: 'Radix UI Tooltip', packageName: '@radix-ui/react-tooltip', license: 'MIT', url: 'https://www.radix-ui.com/primitives/docs/components/tooltip', note: 'Accessible Radix UI tooltip primitive used for consistent in-app tooltip behavior.' },
   { name: 'React', packageName: 'react / react-dom', license: 'MIT', url: 'https://react.dev', note: 'User-interface rendering framework.' },
   { name: 'Vite', packageName: 'vite / @vitejs/plugin-react', license: 'MIT', url: 'https://vite.dev', note: 'Development server and production bundler.' },
   { name: 'TypeScript', packageName: 'typescript', license: 'Apache-2.0', url: 'https://www.typescriptlang.org', note: 'Typed JavaScript language tooling.' },
@@ -151,6 +157,7 @@ export function AssistantPanel({
   const [prompt, setPrompt] = useState('');
   const [showSettings, setShowSettings] = useState(false);
   const [showCredits, setShowCredits] = useState(false);
+  const [providerConfigOpen, setProviderConfigOpen] = useState(true);
   const [showOllamaSetup, setShowOllamaSetup] = useState(false);
   const [copiedModelCommand, setCopiedModelCommand] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -162,7 +169,7 @@ export function AssistantPanel({
     endpointPlaceholder,
     modelPlaceholder,
     testConnectionLabel,
-    privacyNote,
+    modelInfoTooltip,
     updateProvider,
   } = useProviderSettings(settings, onSettingsChange);
   const modelSelection = useModelSelection({ settings, onSettingsChange });
@@ -223,6 +230,11 @@ export function AssistantPanel({
     onSettingsChange({ ...settings, endpoint });
   };
 
+  const handleSaveProviderConfiguration = async () => {
+    const isValid = await onTestConnection();
+    if (isValid) setProviderConfigOpen(false);
+  };
+
   return (
     <aside className="assistant-panel">
       <header className="assistant-header">
@@ -237,132 +249,156 @@ export function AssistantPanel({
           </div>
         </div>
         <div className="assistant-header-actions">
-          <button
-            className="settings-toggle"
-            onClick={() => setShowSettings((value) => !value)}
-            aria-label={showSettings ? 'Back to chat' : 'Open settings'}
-            title={showSettings ? 'Back to chat' : 'Settings'}
-          >
-            <Icon name={showSettings ? 'message' : 'settings'} size={15} />
-            <span>{showSettings ? 'Chat' : 'Settings'}</span>
-          </button>
+          <AppTooltip label={showSettings ? 'Back to chat' : 'Settings'}>
+            <button
+              className="settings-toggle"
+              onClick={() => setShowSettings((value) => !value)}
+              aria-label={showSettings ? 'Back to chat' : 'Open settings'}
+            >
+              <Icon name={showSettings ? 'message' : 'settings'} size={15} />
+              <span>{showSettings ? 'Chat' : 'Settings'}</span>
+            </button>
+          </AppTooltip>
         </div>
       </header>
 
       {showSettings ? (
         <section className="settings-section">
-          <label>
-            Provider
-            <CustomSelect
-              ariaLabel="Provider"
-              value={settings.provider}
-              options={providerOptions.map((provider) => ({ value: provider.id, label: provider.label }))}
-              onChange={(value) => updateProvider(value as LlmProvider)}
-              className="settings-provider-select"
-            />
-          </label>
-          <label>
-            Endpoint / base URL
-            <input
-              value={settings.endpoint}
-              placeholder={endpointPlaceholder}
-              onChange={(event) => updateEndpoint(event.target.value)}
-            />
-          </label>
-          {providerMetadata.requiresApiKey && (
-            <label>
-              API key
-              <input
-                type="text"
-                value={maskedApiKeyInput.displayValue}
-                placeholder="Bearer token for this provider"
-                autoComplete="off"
-                autoCorrect="off"
-                autoCapitalize="off"
-                spellCheck={false}
-                data-lpignore="true"
-                data-1p-ignore="true"
-                onKeyDown={maskedApiKeyInput.onKeyDown}
-                onPaste={maskedApiKeyInput.onPaste}
-                onChange={maskedApiKeyInput.onChange}
-              />
-            </label>
-          )}
-          <label>
-            Model
-            <div
-              ref={modelSelection.rootRef}
-              className="model-combobox"
-              data-open={modelSelection.isOpen ? 'true' : 'false'}
-              data-error={modelValidationError ? 'true' : 'false'}
+          <div className="provider-config-accordion" data-open={providerConfigOpen ? 'true' : 'false'}>
+            <button
+              type="button"
+              className="provider-config-summary"
+              onClick={() => setProviderConfigOpen((value) => !value)}
+              aria-expanded={providerConfigOpen}
             >
-              <input
-                value={settings.model}
-                placeholder={modelPlaceholder}
-                role="combobox"
-                aria-autocomplete="list"
-                aria-expanded={modelSelection.isOpen}
-                aria-controls={modelListboxId}
-                onFocus={modelSelection.openAndLoadModels}
-                onClick={modelSelection.openAndLoadModels}
-                onChange={modelSelection.onInputChange}
-                onKeyDown={modelSelection.onInputKeyDown}
-              />
-              <span className="model-combobox-caret" aria-hidden="true">
-                <Icon name="chevronDown" size={14} />
+              <span>
+                <strong>Provider configuration</strong>
+                <small>{providerMetadata.label} · {settings.model}</small>
               </span>
-              {modelSelection.isOpen && (
-                <div id={modelListboxId} className="model-combobox-menu" role="listbox" aria-label="Available models">
-                  {modelSelection.filteredModels.map((model, index) => (
-                    <button
-                      type="button"
-                      key={model.value}
-                      className="model-combobox-option"
-                      role="option"
-                      aria-selected={model.value === settings.model}
-                      data-active={index === modelSelection.activeIndex ? 'true' : 'false'}
-                      data-selected={model.value === settings.model ? 'true' : 'false'}
-                      onClick={() => modelSelection.selectModel(model)}
-                    >
-                      <span>{model.label}</span>
-                      {model.supportsVision && <span className="model-vision-pill">Vision</span>}
-                    </button>
-                  ))}
-                  {modelSelection.statusText && (
-                    <p className="model-combobox-status" role={modelSelection.loadState === 'error' ? 'alert' : 'status'}>
-                      {modelSelection.statusText}
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-            {modelValidationError && <p className="settings-field-error">{modelValidationError}</p>}
-          </label>
-          {settings.provider === 'ollama' && (
-            <button type="button" className="secondary-settings-button" onClick={() => setShowOllamaSetup(true)}>
-              <Icon name="info" size={15} />
-              Setup local vision model
+              <Icon name="chevronDown" size={15} />
             </button>
-          )}
-          <label>
-            Temperature: {settings.temperature.toFixed(1)}
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.1"
-              value={settings.temperature}
-              onChange={(event) => onSettingsChange({ ...settings, temperature: Number(event.target.value) })}
-            />
-          </label>
-          <button onClick={onTestConnection} disabled={isBusy}>
-            <Icon name="plug" size={15} />
-            {testConnectionLabel}
-          </button>
-          <button type="button" className="secondary-settings-button" onClick={() => setShowCredits(true)}>
-            <Icon name="info" size={15} />
-            Open source credits
-          </button>
+            {providerConfigOpen && (
+              <div className="provider-config-content">
+                <label>
+                  Provider
+                  <CustomSelect
+                    ariaLabel="Provider"
+                    value={settings.provider}
+                    options={providerOptions.map((provider) => ({ value: provider.id, label: provider.label }))}
+                    onChange={(value) => updateProvider(value as LlmProvider)}
+                    className="settings-provider-select"
+                  />
+                </label>
+                <label>
+                  Endpoint / base URL
+                  <input
+                    value={settings.endpoint}
+                    placeholder={endpointPlaceholder}
+                    onChange={(event) => updateEndpoint(event.target.value)}
+                  />
+                </label>
+                {providerMetadata.requiresApiKey && (
+                  <label>
+                    API key
+                    <input
+                      type="text"
+                      value={maskedApiKeyInput.displayValue}
+                      placeholder="Bearer token for this provider"
+                      autoComplete="off"
+                      autoCorrect="off"
+                      autoCapitalize="off"
+                      spellCheck={false}
+                      data-lpignore="true"
+                      data-1p-ignore="true"
+                      onKeyDown={maskedApiKeyInput.onKeyDown}
+                      onPaste={maskedApiKeyInput.onPaste}
+                      onChange={maskedApiKeyInput.onChange}
+                    />
+                  </label>
+                )}
+                <label>
+                  <span className="settings-inline-label">
+                    <span>Model</span>
+                    <AppTooltip label={modelInfoTooltip}>
+                      <button type="button" className="settings-help-icon" aria-label="Model endpoint information">
+                        <Icon name="info" size={13} />
+                      </button>
+                    </AppTooltip>
+                  </span>
+                  <div
+                    ref={modelSelection.rootRef}
+                    className="model-combobox"
+                    data-open={modelSelection.isOpen ? 'true' : 'false'}
+                    data-error={modelValidationError ? 'true' : 'false'}
+                  >
+                    <input
+                      value={settings.model}
+                      placeholder={modelPlaceholder}
+                      role="combobox"
+                      aria-autocomplete="list"
+                      aria-expanded={modelSelection.isOpen}
+                      aria-controls={modelListboxId}
+                      onFocus={modelSelection.openAndLoadModels}
+                      onClick={modelSelection.openAndLoadModels}
+                      onChange={modelSelection.onInputChange}
+                      onKeyDown={modelSelection.onInputKeyDown}
+                    />
+                    <span className="model-combobox-caret" aria-hidden="true">
+                      <Icon name="chevronDown" size={14} />
+                    </span>
+                    {modelSelection.isOpen && (
+                      <div id={modelListboxId} className="model-combobox-menu" role="listbox" aria-label="Available models">
+                        {modelSelection.filteredModels.map((model, index) => (
+                          <button
+                            type="button"
+                            key={model.value}
+                            className="model-combobox-option"
+                            role="option"
+                            aria-selected={model.value === settings.model}
+                            data-active={index === modelSelection.activeIndex ? 'true' : 'false'}
+                            data-selected={model.value === settings.model ? 'true' : 'false'}
+                            onClick={() => modelSelection.selectModel(model)}
+                          >
+                            <span>{model.label}</span>
+                            {model.supportsVision && <span className="model-vision-pill">Vision</span>}
+                          </button>
+                        ))}
+                        {modelSelection.statusText && (
+                          <p className="model-combobox-status" role={modelSelection.loadState === 'error' ? 'alert' : 'status'}>
+                            {modelSelection.statusText}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {modelValidationError && <p className="settings-field-error">{modelValidationError}</p>}
+                </label>
+                {settings.provider === 'ollama' && (
+                  <button type="button" className="secondary-settings-button" onClick={() => setShowOllamaSetup(true)}>
+                    <Icon name="info" size={15} />
+                    Setup local vision model
+                  </button>
+                )}
+                <label>
+                  Temperature: {settings.temperature.toFixed(1)}
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.1"
+                    value={settings.temperature}
+                    onChange={(event) => onSettingsChange({ ...settings, temperature: Number(event.target.value) })}
+                  />
+                </label>
+                <div className="provider-config-actions">
+                  <button onClick={handleSaveProviderConfiguration} disabled={isBusy}>
+                    <Icon name="plug" size={15} />
+                    {testConnectionLabel}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
           <div className="settings-option-card">
             <span className="settings-option-icon" aria-hidden="true">
               <Icon name="message" size={16} />
@@ -370,13 +406,11 @@ export function AssistantPanel({
             <div className="settings-option-copy">
               <div className="settings-option-title-row">
                 <span className="settings-option-title">Use chat history for auto reviews</span>
-                <span
-                  className="settings-help-icon"
-                  title="When enabled, previous chat and review messages are sent to the LLM during proactive reviews. This can consume more tokens."
-                  aria-label="Previous messages will be sent to the LLM and can consume more tokens."
-                >
-                  <Icon name="info" size={13} />
-                </span>
+                <AppTooltip label="When enabled, previous chat and review messages are sent to the LLM during proactive reviews. This can consume more tokens.">
+                  <button type="button" className="settings-help-icon" aria-label="Previous messages will be sent to the LLM and can consume more tokens.">
+                    <Icon name="info" size={13} />
+                  </button>
+                </AppTooltip>
               </div>
               <p className="settings-option-description">
                 Off by default. Enable only if proactive reviews should consider the previous conversation.
@@ -400,24 +434,27 @@ export function AssistantPanel({
               <span className="settings-switch-thumb" />
             </button>
           </div>
-          <p className="privacy-note">{privacyNote}</p>
           <div className="settings-bottom-actions">
-            <button
-              type="button"
-              className="theme-footer-button"
-              onClick={() => onSettingsChange({ ...settings, theme: settings.theme === 'dark' ? 'light' : 'dark' })}
-              aria-label={settings.theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-              title={settings.theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-            >
-              <Icon name={settings.theme === 'dark' ? 'sun' : 'moon'} size={15} />
-              <span>{settings.theme === 'dark' ? 'Light theme' : 'Dark theme'}</span>
-            </button>
+            <AppTooltip label={settings.theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}>
+              <button
+                type="button"
+                className="theme-footer-button"
+                onClick={() => onSettingsChange({ ...settings, theme: settings.theme === 'dark' ? 'light' : 'dark' })}
+                aria-label={settings.theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+              >
+                <Icon name={settings.theme === 'dark' ? 'sun' : 'moon'} size={15} />
+                <span>{settings.theme === 'dark' ? 'Light theme' : 'Dark theme'}</span>
+              </button>
+            </AppTooltip>
             <footer className="settings-footer">
               <span>Built by <a href={X_PROFILE_URL} target="_blank" rel="noreferrer">Shashank Harikripa</a></span>
-              <nav className="settings-socials" aria-label="Social links">
-                <a className="icon-link" href={PROJECT_GITHUB_URL} target="_blank" rel="noreferrer" aria-label="Open GitHub repository">
+              <nav className="settings-socials" aria-label="Project links">
+                <TooltipIconAction label="Visit project" href={PROJECT_GITHUB_URL} target="_blank" rel="noreferrer">
                   <Icon name="github" size={16} />
-                </a>
+                </TooltipIconAction>
+                <TooltipIconAction label="Open source attributions" onClick={() => setShowCredits(true)}>
+                  <Icon name="eye" size={16} />
+                </TooltipIconAction>
               </nav>
             </footer>
           </div>
@@ -448,27 +485,30 @@ export function AssistantPanel({
 
           <footer className="composer">
             <div className="composer-options">
-              <div className="thinking-control" title="Thinking level">
-                <Icon name="brain" size={15} />
-                <CustomSelect
-                  ariaLabel="Thinking level"
-                  value={settings.thinkingLevel}
-                  options={THINKING_OPTIONS}
-                  onChange={(value) => onSettingsChange({ ...settings, thinkingLevel: value as ThinkingLevel })}
-                  disabled={isBusy}
-                  className="thinking-select"
-                />
-              </div>
-              <button
-                type="button"
-                className="composer-clear-button clear-button"
-                onClick={onClearChat}
-                disabled={isBusy || messages.length === 0}
-                aria-label="Clear chat"
-                title="Clear chat"
-              >
-                <Icon name="trash" size={15} />
-              </button>
+              <AppTooltip label="Thinking level">
+                <div className="thinking-control">
+                  <Icon name="brain" size={15} />
+                  <CustomSelect
+                    ariaLabel="Thinking level"
+                    value={settings.thinkingLevel}
+                    options={THINKING_OPTIONS}
+                    onChange={(value) => onSettingsChange({ ...settings, thinkingLevel: value as ThinkingLevel })}
+                    disabled={isBusy}
+                    className="thinking-select"
+                  />
+                </div>
+              </AppTooltip>
+              <AppTooltip label="Clear chat">
+                <button
+                  type="button"
+                  className="composer-clear-button clear-button"
+                  onClick={onClearChat}
+                  disabled={isBusy || messages.length === 0}
+                  aria-label="Clear chat"
+                >
+                  <Icon name="trash" size={15} />
+                </button>
+              </AppTooltip>
             </div>
 
             <div className="composer-input-wrap">
@@ -485,17 +525,18 @@ export function AssistantPanel({
             </div>
 
             <div className="composer-action-row">
-              <button
-                type="button"
-                onClick={() => onSettingsChange({ ...settings, autoReview: !settings.autoReview })}
-                className={`input-corner-toggle ${settings.autoReview ? 'proactive-button' : 'manual-button'}`}
-                aria-label={settings.autoReview ? 'Switch to manual review' : 'Switch to proactive review'}
-                title={settings.autoReview ? 'Currently proactive. Click for manual.' : 'Currently manual. Click for proactive.'}
-                disabled={isBusy}
-              >
-                <Icon name={settings.autoReview ? 'zap' : 'user'} size={14} />
-                <span>{settings.autoReview ? 'Proactive' : 'Manual'}</span>
-              </button>
+              <AppTooltip label={settings.autoReview ? 'Currently proactive. Click for manual.' : 'Currently manual. Click for proactive.'}>
+                <button
+                  type="button"
+                  onClick={() => onSettingsChange({ ...settings, autoReview: !settings.autoReview })}
+                  className={`input-corner-toggle ${settings.autoReview ? 'proactive-button' : 'manual-button'}`}
+                  aria-label={settings.autoReview ? 'Switch to manual review' : 'Switch to proactive review'}
+                  disabled={isBusy}
+                >
+                  <Icon name={settings.autoReview ? 'zap' : 'user'} size={14} />
+                  <span>{settings.autoReview ? 'Proactive' : 'Manual'}</span>
+                </button>
+              </AppTooltip>
               <button
                 className={`send-button unified-action-button input-action-button ${prompt.trim() ? 'send-mode' : 'review-mode'}`}
                 onClick={() => (prompt.trim() ? submit() : onReview())}
@@ -572,15 +613,16 @@ export function AssistantPanel({
                       </div>
                       <div className="vision-model-command">
                         <code>{model.command}</code>
-                        <button
-                          type="button"
-                          className={`model-copy-button${copiedModelCommand === model.command ? ' is-copied' : ''}`}
-                          onClick={() => copyModelCommand(model.command)}
-                          aria-label={copiedModelCommand === model.command ? `Copied ${model.command}` : `Copy ${model.command}`}
-                          title={copiedModelCommand === model.command ? 'Copied' : `Copy ${model.command}`}
-                        >
-                          <Icon name={copiedModelCommand === model.command ? 'check' : 'copy'} size={14} />
-                        </button>
+                        <AppTooltip label={copiedModelCommand === model.command ? 'Copied' : `Copy ${model.command}`}>
+                          <button
+                            type="button"
+                            className={`model-copy-button${copiedModelCommand === model.command ? ' is-copied' : ''}`}
+                            onClick={() => copyModelCommand(model.command)}
+                            aria-label={copiedModelCommand === model.command ? `Copied ${model.command}` : `Copy ${model.command}`}
+                          >
+                            <Icon name={copiedModelCommand === model.command ? 'check' : 'copy'} size={14} />
+                          </button>
+                        </AppTooltip>
                       </div>
                       <div className="vision-model-actions">
                         <a href={model.url} target="_blank" rel="noreferrer">View model</a>
@@ -609,9 +651,9 @@ export function AssistantPanel({
             <header className="credits-modal-header">
               <div>
                 <p className="credits-kicker">Open source</p>
-                <h2 id="credits-title">Library credits</h2>
+                <h2 id="credits-title">Open source attributions</h2>
               </div>
-              <button type="button" className="credits-close-button" onClick={() => setShowCredits(false)} aria-label="Close credits">
+              <button type="button" className="credits-close-button" onClick={() => setShowCredits(false)} aria-label="Close open source attributions">
                 <Icon name="x" size={15} />
               </button>
             </header>

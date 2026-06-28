@@ -17,10 +17,7 @@ export function useProviderSettings(settings: AppSettings, onSettingsChange: (se
     endpointPlaceholder: providerMetadata.defaultEndpoint,
     modelPlaceholder: providerMetadata.defaultModel,
     testConnectionLabel: 'Save',
-    privacyNote:
-      settings.provider === 'ollama'
-        ? 'Local-only: prompts, images, chats, and diagrams are sent only to the configured Ollama endpoint.'
-        : 'OpenAI-compatible mode sends prompts, diagram images, and metadata to the configured endpoint. Use a vision-capable model.',
+    modelInfoTooltip: 'Sends prompts, images, and diagram metadata to this model. Choose a vision-capable model.',
     updateProvider,
   };
 }
