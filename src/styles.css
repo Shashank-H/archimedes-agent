@@ -79,8 +79,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 }
 .canvas-pane {
   position: relative;
-  flex: 1 1 auto;
-  min-width: 420px;
+  flex: 1 1 0;
+  min-width: 0;
   height: 100%;
   background: var(--canvas);
 }
@@ -1859,19 +1859,75 @@ button.model-copy-button:hover:not(:disabled) {
   line-height: 18px;
 }
 .workspace-empty p { margin: 0 0 10px; color: var(--body); }
-.workspace-tabs {
+.workspace-tabs-shell {
   position: relative;
-  z-index: 2;
-  height: 40px;
+  z-index: 20;
+  width: 100%;
+  min-width: 0;
+  height: 32px;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--canvas-soft);
+}
+.workspace-tabs {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
   display: flex;
   align-items: stretch;
   overflow-x: auto;
   overflow-y: hidden;
-  border-bottom: 1px solid var(--hairline);
-  background: var(--canvas-soft);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.workspace-tabs::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+.custom-horizontal-scrollbar {
+  position: absolute;
+  left: 1px;
+  right: 1px;
+  bottom: 1px;
+  z-index: 30;
+  height: 2px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms ease;
+}
+.workspace-tabs-shell[data-overflow="true"] .custom-horizontal-scrollbar {
+  opacity: 0.42;
+}
+.workspace-tabs-shell[data-overflow="true"]:hover .custom-horizontal-scrollbar,
+.workspace-tabs-shell[data-overflow="true"]:focus-within .custom-horizontal-scrollbar {
+  opacity: 1;
+  pointer-events: auto;
+}
+.custom-horizontal-scrollbar-thumb {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 2px;
+  min-width: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--ink);
+  opacity: 0.42;
+  cursor: grab;
+  touch-action: none;
+}
+.workspace-tabs-shell:hover .custom-horizontal-scrollbar-thumb,
+.workspace-tabs-shell:focus-within .custom-horizontal-scrollbar-thumb {
+  background: var(--ink);
+}
+.custom-horizontal-scrollbar-thumb:active {
+  cursor: grabbing;
+  background: var(--ink);
 }
 .workspace-tab {
-  min-width: 140px;
+  flex: 0 0 180px;
+  min-width: 128px;
   max-width: 240px;
   display: flex;
   align-items: stretch;
@@ -1880,6 +1936,7 @@ button.model-copy-button:hover:not(:disabled) {
 }
 .workspace-tab.is-active { background: var(--canvas); }
 .workspace-tab-button,
+.workspace-tab-save,
 .workspace-tab-close {
   min-height: 0;
   border: 0;
@@ -1892,49 +1949,49 @@ button.model-copy-button:hover:not(:disabled) {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 8px 0 12px;
+  gap: 7px;
+  padding: 0 6px 0 10px;
+}
+.workspace-tab-save {
+  flex: 0 0 auto;
+  padding: 0 7px;
+  color: #18794e;
+  font-size: 11px;
+  font-weight: 650;
+}
+.workspace-tab-save:disabled {
+  color: var(--mute);
+  cursor: not-allowed;
 }
 .workspace-tab-close {
-  flex: 0 0 30px;
-  width: 30px;
+  flex: 0 0 26px;
+  width: 26px;
   padding: 0;
   color: var(--mute);
-  font-size: 18px;
+  font-size: 17px;
 }
-.workspace-toolbar {
-  position: relative;
-  z-index: 2;
-  min-height: 48px;
+.workspace-tab-tooltip {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 8px 14px;
-  border-bottom: 1px solid var(--hairline);
-  background: rgba(255, 255, 255, 0.86);
-  backdrop-filter: blur(18px);
-}
-.workspace-toolbar-title {
-  min-width: 0;
-  display: flex;
+  min-width: 180px;
+  max-width: 320px;
   flex-direction: column;
-  gap: 1px;
+  gap: 3px;
 }
-.workspace-toolbar-title strong,
-.workspace-toolbar-title span {
+.workspace-tab-tooltip strong,
+.workspace-tab-tooltip span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.workspace-toolbar-title strong { font-size: 13px; line-height: 18px; }
-.workspace-toolbar-title span,
-.workspace-save-state { color: var(--mute); font-size: 12px; line-height: 16px; }
-.workspace-save-state.is-dirty { color: #9a6700; }
-.workspace-save-state.is-saved { color: #18794e; }
+.workspace-tab-tooltip span,
+.workspace-tab-tooltip em {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 11px;
+  font-style: normal;
+}
 .workspace-editor-body {
   position: relative;
-  height: calc(100% - 88px);
+  height: calc(100% - 32px);
   min-height: 0;
 }
 .unsupported-file-view {

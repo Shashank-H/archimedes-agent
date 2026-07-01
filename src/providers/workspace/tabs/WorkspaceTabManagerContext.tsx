@@ -11,6 +11,7 @@ import {
 import { serializeExcalidrawFile } from '../../../lib/excalidrawFile';
 import { appStorage } from '../../../lib/storage';
 import { workspaceProviderFactory } from '../../../lib/workspace/factory';
+import { getWorkspaceResourceKey } from '../../../lib/workspace/types';
 import type {
   WorkspaceEntry,
   WorkspaceFileId,
@@ -32,11 +33,12 @@ type WorkspaceTabManagerContextValue = {
   activeSnapshot: DiagramSnapshot | null;
   snapshotRef: RefObject<DiagramSnapshot | null>;
   getCurrentSnapshot: () => DiagramSnapshot | null;
-  handleSnapshotChange: (snapshot: DiagramSnapshot) => void;
+  handleSnapshotChange: (tabId: WorkspaceFileId, snapshot: DiagramSnapshot) => boolean;
   openEntryAsTab: (entry: WorkspaceEntry) => Promise<void>;
   openUntitledTab: () => void;
   switchTab: (tabId: WorkspaceFileId) => void;
   closeTab: (tabId: WorkspaceFileId) => void;
+  saveTab: (tabId: WorkspaceFileId) => Promise<void>;
   saveActiveTab: () => Promise<void>;
 };
 
@@ -109,6 +111,7 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
   const [activeTabId, setActiveTabId] = useState<WorkspaceFileId>(UNTITLED_DOCUMENT_ID);
   const activeTabIdRef = useRef<WorkspaceFileId>(UNTITLED_DOCUMENT_ID);
   const persistTimerRef = useRef<number | undefined>(undefined);
+  const pendingOpenResourceKeysRef = useRef(new Set<string>());
 
   const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? tabs[0] ?? null;
   const activeSnapshot = activeTab ? documentRecordByTabIdRef.current.get(activeTab.id)?.snapshot ?? null : null;
@@ -142,33 +145,55 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
     });
   }, []);
 
-  const handleSnapshotChange = useCallback((snapshot: DiagramSnapshot) => {
-    const tabId = activeTabIdRef.current;
-    const currentRecord = documentRecordByTabIdRef.current.get(tabId) ?? createDocumentRecord(null);
+  const handleSnapshotChange = useCallback((tabId: WorkspaceFileId, snapshot: DiagramSnapshot) => {
+    const currentRecord = documentRecordByTabIdRef.current.get(tabId);
+    if (!currentRecord || !tabsRef.current.some((tab) => tab.id === tabId)) return false;
+
+    const currentFingerprint = createSnapshotFingerprint(currentRecord.snapshot);
+    const nextFingerprint = createSnapshotFingerprint(snapshot);
+
+    if (currentFingerprint === nextFingerprint) return false;
+
     const nextRecord = {
       ...currentRecord,
       snapshot,
     };
 
     documentRecordByTabIdRef.current.set(tabId, nextRecord);
-    snapshotRef.current = snapshot;
+    if (activeTabIdRef.current === tabId) {
+      snapshotRef.current = snapshot;
+    }
     setTabSaveState(tabId, resolveSnapshotSaveState(snapshot, nextRecord.savedFingerprint));
 
     if (tabId === UNTITLED_DOCUMENT_ID) {
       window.clearTimeout(persistTimerRef.current);
       persistTimerRef.current = window.setTimeout(() => appStorage.saveScene(snapshot), UNTITLED_AUTOSAVE_DELAY_MS);
     }
+
+    return activeTabIdRef.current === tabId;
   }, [setTabSaveState]);
 
   const openEntryAsTab = useCallback(async (entry: WorkspaceEntry) => {
     if (entry.kind === 'directory') return;
 
-    if (tabsRef.current.some((tab) => tab.id === entry.id)) {
+    const entryResourceKey = getWorkspaceResourceKey(entry);
+    const existingTab = tabsRef.current.find((tab) => getWorkspaceResourceKey(tab) === entryResourceKey);
+    if (existingTab) {
+      setActive(existingTab.id);
+      return;
+    }
+
+    if (pendingOpenResourceKeysRef.current.has(entryResourceKey)) {
       setActive(entry.id);
       return;
     }
 
-    setTabs((currentTabs) => [...currentTabs, createLoadingTab(entry)]);
+    pendingOpenResourceKeysRef.current.add(entryResourceKey);
+    setTabs((currentTabs) => (
+      currentTabs.some((tab) => getWorkspaceResourceKey(tab) === entryResourceKey)
+        ? currentTabs
+        : [...currentTabs, createLoadingTab(entry)]
+    ));
     setActive(entry.id);
 
     try {
@@ -198,6 +223,8 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
             : tab,
         ),
       );
+    } finally {
+      pendingOpenResourceKeysRef.current.delete(entryResourceKey);
     }
   }, [setActive]);
 
@@ -206,37 +233,34 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
   const switchTab = useCallback((tabId: WorkspaceFileId) => setActive(tabId), [setActive]);
 
   const closeTab = useCallback((tabId: WorkspaceFileId) => {
-    const tab = tabs.find((candidate) => candidate.id === tabId);
+    const currentTabs = tabsRef.current;
+    const tab = currentTabs.find((candidate) => candidate.id === tabId);
     if (tab?.saveState === 'dirty' && !window.confirm(`Close ${tab.title} without saving?`)) return;
     if (tabId === UNTITLED_DOCUMENT_ID) return;
 
+    const closedTabIndex = currentTabs.findIndex((candidate) => candidate.id === tabId);
+    const remainingTabs = currentTabs.filter((candidate) => candidate.id !== tabId);
+    const nextTabs = remainingTabs.length > 0 ? remainingTabs : [createUntitledTab()];
+    const nextActiveTab = activeTabIdRef.current === tabId
+      ? nextTabs[Math.max(0, closedTabIndex - 1)] ?? nextTabs[0]
+      : currentTabs.find((candidate) => candidate.id === activeTabIdRef.current) ?? nextTabs[0];
+    const nextActiveTabId = nextActiveTab?.id ?? UNTITLED_DOCUMENT_ID;
+
     documentRecordByTabIdRef.current.delete(tabId);
-    setTabs((currentTabs) => {
-      const nextTabs = currentTabs.filter((candidate) => candidate.id !== tabId);
-
-      if (activeTabIdRef.current === tabId) {
-        const closedTabIndex = currentTabs.findIndex((candidate) => candidate.id === tabId);
-        const nextActiveTab = nextTabs[Math.max(0, closedTabIndex - 1)] ?? nextTabs[0];
-        const nextActiveTabId = nextActiveTab?.id ?? UNTITLED_DOCUMENT_ID;
-        activeTabIdRef.current = nextActiveTabId;
-        setActiveTabId(nextActiveTabId);
-      }
-
-      if (nextTabs.length > 0) return nextTabs;
-
+    if (remainingTabs.length === 0) {
       const untitledSnapshot = appStorage.loadScene();
       documentRecordByTabIdRef.current.set(UNTITLED_DOCUMENT_ID, createDocumentRecord(untitledSnapshot));
-      activeTabIdRef.current = UNTITLED_DOCUMENT_ID;
-      setActiveTabId(UNTITLED_DOCUMENT_ID);
-      return [createUntitledTab()];
-    });
-  }, [tabs]);
+    }
 
-  const saveActiveTab = useCallback(async () => {
-    const tabId = activeTabIdRef.current;
-    const tab = tabs.find((candidate) => candidate.id === tabId);
+    activeTabIdRef.current = nextActiveTabId;
+    setActiveTabId(nextActiveTabId);
+    setTabs(nextTabs);
+  }, []);
+
+  const saveTab = useCallback(async (tabId: WorkspaceFileId) => {
+    const tab = tabsRef.current.find((candidate) => candidate.id === tabId);
     const snapshot = documentRecordByTabIdRef.current.get(tabId)?.snapshot;
-    if (!tab || !snapshot || !tab.isSupported) return;
+    if (!tab || !snapshot || !tab.isSupported || tab.loadState !== 'loaded' || tab.saveState === 'saving') return;
 
     setTabs((currentTabs) =>
       currentTabs.map((candidate) =>
@@ -283,7 +307,11 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
         ),
       );
     }
-  }, [tabs]);
+  }, []);
+
+  const saveActiveTab = useCallback(async () => {
+    await saveTab(activeTabIdRef.current);
+  }, [saveTab]);
 
   const value = useMemo<WorkspaceTabManagerContextValue>(() => ({
     tabs,
@@ -297,6 +325,7 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
     openUntitledTab,
     switchTab,
     closeTab,
+    saveTab,
     saveActiveTab,
   }), [
     tabs,
@@ -309,6 +338,7 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
     openUntitledTab,
     switchTab,
     closeTab,
+    saveTab,
     saveActiveTab,
   ]);
 

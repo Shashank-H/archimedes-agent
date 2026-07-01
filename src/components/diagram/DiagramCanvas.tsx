@@ -14,6 +14,12 @@ type DiagramCanvasProps = {
   onApiReady: (api: ExcalidrawImperativeAPI) => void;
 };
 
+const EXCALIDRAW_UI_OPTIONS = {
+  canvasActions: {
+    saveToActiveFile: false,
+  },
+} as const;
+
 export function DiagramCanvas({ documentKey, initialSnapshot, theme, onSnapshotChange, onApiReady }: DiagramCanvasProps) {
   const initialData = useMemo(
     () =>
@@ -38,6 +44,7 @@ export function DiagramCanvas({ documentKey, initialSnapshot, theme, onSnapshotC
         excalidrawAPI={onApiReady}
         initialData={initialData}
         theme={theme}
+        UIOptions={EXCALIDRAW_UI_OPTIONS}
         onChange={(elements: readonly ExcalidrawElement[], appState: AppState, files: BinaryFiles) => {
           onSnapshotChange({
             elements,
