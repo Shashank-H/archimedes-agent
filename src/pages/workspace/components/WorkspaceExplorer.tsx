@@ -1,4 +1,5 @@
 import { useWorkspace } from '../../../providers/workspace/WorkspaceContext';
+import { useWorkspaceTabManager } from '../../../providers/workspace/tabs/WorkspaceTabManagerContext';
 import { WorkspaceTree } from './WorkspaceTree';
 
 export function WorkspaceExplorer() {
@@ -7,14 +8,13 @@ export function WorkspaceExplorer() {
     entriesByParentId,
     expandedEntryIds,
     selectedEntryId,
-    tabs,
     isOpeningRoot,
     treeError,
     openWorkspaceRoot,
     refreshWorkspaceRoot,
     selectEntry,
-    openUntitledTab,
   } = useWorkspace();
+  const { tabs, openUntitledTab } = useWorkspaceTabManager();
 
   return (
     <aside className="workspace-explorer" aria-label="Workspace explorer">

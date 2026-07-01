@@ -3,12 +3,14 @@ import { llmProviderFactory } from '../../lib/llm/provider';
 import { settingsValidationKey } from '../../lib/settingsValidation';
 import type { AppSettings } from '../../types';
 import { useWorkspace } from '../workspace/WorkspaceContext';
+import { useWorkspaceTabManager } from '../workspace/tabs/WorkspaceTabManagerContext';
 import { ChatContext } from './ChatContext';
 import { useAgentReview } from './hooks/useAgentReview';
 import { useChatMessages } from './hooks/useChatMessages';
 
 export function ChatProvider({ children }: { children: ReactNode }) {
-  const { settings, handleSettingsChange, snapshotRef, getCurrentSnapshot } = useWorkspace();
+  const { settings, handleSettingsChange } = useWorkspace();
+  const { snapshotRef, getCurrentSnapshot } = useWorkspaceTabManager();
   const { messages, setMessages, handleClearChat } = useChatMessages();
   const setSettings = useCallback((next: AppSettings | ((current: AppSettings) => AppSettings)) => {
     handleSettingsChange(typeof next === 'function' ? next(settings) : next);

@@ -55,7 +55,6 @@ export type WorkspaceTab = {
   loadState: WorkspaceLoadState;
   saveState: WorkspaceSaveState;
   error: string | null;
-  snapshot: DiagramSnapshot | null;
 };
 
 export type WorkspaceOpenRootResult = {

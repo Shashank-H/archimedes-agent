@@ -1,4 +1,4 @@
-import type { BinaryFiles } from '@excalidraw/excalidraw/types';
+import type { AppState, BinaryFiles } from '@excalidraw/excalidraw/types';
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types';
 import type { DiagramSnapshot } from '../types';
 
@@ -17,6 +17,34 @@ type ExcalidrawFilePayload = {
   appState?: Record<string, unknown>;
   files?: BinaryFiles;
 };
+
+const PERSISTENT_APP_STATE_KEYS = [
+  'viewBackgroundColor',
+  'currentItemStrokeColor',
+  'currentItemBackgroundColor',
+  'currentItemFillStyle',
+  'currentItemStrokeWidth',
+  'currentItemStrokeStyle',
+  'currentItemRoughness',
+  'currentItemOpacity',
+  'gridSize',
+  'theme',
+] as const;
+
+export function createPersistentAppState(appState: Partial<AppState> | Record<string, unknown> = {}): Partial<AppState> {
+  const appStateRecord = appState as Record<string, unknown>;
+
+  return PERSISTENT_APP_STATE_KEYS.reduce((persistentAppState, key) => {
+    if (key in appStateRecord) {
+      return {
+        ...persistentAppState,
+        [key]: appStateRecord[key],
+      };
+    }
+
+    return persistentAppState;
+  }, {} as Partial<AppState>);
+}
 
 export function parseExcalidrawFile(content: string): DiagramSnapshot {
   let parsed: ExcalidrawFilePayload;
@@ -37,7 +65,7 @@ export function parseExcalidrawFile(content: string): DiagramSnapshot {
 
   return {
     elements: parsed.elements,
-    appState: parsed.appState ?? {},
+    appState: createPersistentAppState(parsed.appState),
     files: parsed.files ?? {},
     updatedAt: Date.now(),
   };
@@ -50,7 +78,7 @@ export function serializeExcalidrawFile(snapshot: DiagramSnapshot) {
       version: 2,
       source: 'archimedes-agent',
       elements: snapshot.elements,
-      appState: snapshot.appState,
+      appState: createPersistentAppState(snapshot.appState),
       files: snapshot.files,
     },
     null,

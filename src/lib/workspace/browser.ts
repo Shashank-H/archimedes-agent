@@ -28,6 +28,19 @@ function extensionFor(name: string) {
   return match?.[1];
 }
 
+async function ensureReadWritePermission(handle: StoredHandle) {
+  const permissionHandle = handle as StoredHandle & {
+    queryPermission?: (descriptor?: { mode?: 'read' | 'readwrite' }) => Promise<PermissionState>;
+    requestPermission?: (descriptor?: { mode?: 'read' | 'readwrite' }) => Promise<PermissionState>;
+  };
+  const descriptor = { mode: 'readwrite' } as const;
+
+  if ((await permissionHandle.queryPermission?.(descriptor)) === 'granted') return;
+  if ((await permissionHandle.requestPermission?.(descriptor)) === 'granted') return;
+
+  throw new Error('Write permission was not granted for this workspace file.');
+}
+
 export class BrowserWorkspaceProvider implements WorkspaceDataProvider {
   readonly kind = 'browser' as const;
   readonly capabilities = {
@@ -41,9 +54,9 @@ export class BrowserWorkspaceProvider implements WorkspaceDataProvider {
     if (!hasFileSystemAccessApi()) throw new Error('This browser does not support folder workspaces.');
 
     const picker = (window as typeof window & {
-      showDirectoryPicker: () => Promise<DirectoryHandle>;
+      showDirectoryPicker: (options?: { mode?: 'read' | 'readwrite' }) => Promise<DirectoryHandle>;
     }).showDirectoryPicker;
-    const handle = await picker();
+    const handle = await picker({ mode: 'readwrite' });
     const rootId = `browser://workspace-${++rootCounter}` as const;
     browserHandles.set(rootId, handle);
     browserHandlePaths.set(rootId, handle.name);
@@ -97,6 +110,8 @@ export class BrowserWorkspaceProvider implements WorkspaceDataProvider {
   async writeDocument(document: WorkspaceDocument, snapshot: DiagramSnapshot): Promise<void> {
     const handle = browserHandles.get(document.id);
     if (!handle || handle.kind !== 'file') throw new Error('Browser file handle is no longer available.');
+
+    await ensureReadWritePermission(handle);
 
     const writable = await handle.createWritable();
     await writable.write(serializeExcalidrawFile(snapshot));

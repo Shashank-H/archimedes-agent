@@ -1,11 +1,10 @@
-import { createContext, useContext, type RefObject } from 'react';
+import { createContext, useContext } from 'react';
 import type {
   WorkspaceEntry,
   WorkspaceFileId,
   WorkspaceRoot,
-  WorkspaceTab,
 } from '../../lib/workspace/types';
-import type { AppSettings, DiagramSnapshot, ExcalidrawApi } from '../../types';
+import type { AppSettings, ExcalidrawApi } from '../../types';
 
 export type WorkspaceContextValue = {
   settings: AppSettings;
@@ -15,24 +14,12 @@ export type WorkspaceContextValue = {
   selectedEntryId: WorkspaceFileId | null;
   isOpeningRoot: boolean;
   treeError: string | null;
-  tabs: WorkspaceTab[];
-  activeTab: WorkspaceTab | null;
-  activeTabId: WorkspaceFileId | null;
-  activeSnapshot: DiagramSnapshot | null;
-  initialSnapshot: DiagramSnapshot | null;
-  snapshotRef: RefObject<DiagramSnapshot | null>;
   setDiagramApi: (api: ExcalidrawApi) => void;
-  getCurrentSnapshot: () => DiagramSnapshot | null;
-  handleSnapshotChange: (snapshot: DiagramSnapshot) => void;
   handleSettingsChange: (settings: AppSettings) => void;
   openWorkspaceRoot: () => Promise<void>;
   refreshWorkspaceRoot: () => Promise<void>;
   toggleDirectory: (entry: WorkspaceEntry) => Promise<void>;
   selectEntry: (entry: WorkspaceEntry) => Promise<void>;
-  openUntitledTab: () => void;
-  switchTab: (tabId: WorkspaceFileId) => void;
-  closeTab: (tabId: WorkspaceFileId) => void;
-  saveActiveTab: () => Promise<void>;
 };
 
 export const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
