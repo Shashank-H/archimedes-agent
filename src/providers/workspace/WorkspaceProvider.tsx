@@ -1,6 +1,7 @@
 import { useCallback, useRef, type ReactNode } from 'react';
 import type { WorkspaceEntry } from '../../lib/workspace/types';
 import type { ExcalidrawApi } from '../../types';
+import { GlobalShortcutsProvider } from '../shortcuts/GlobalShortcutsProvider';
 import { WorkspaceContext } from './WorkspaceContext';
 import { useWorkspaceSettings } from './hooks/useWorkspaceSettings';
 import { useWorkspaceTree } from './hooks/useWorkspaceTree';
@@ -51,7 +52,9 @@ function WorkspaceContextProvider({ children }: { children: ReactNode }) {
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   return (
     <WorkspaceTabManagerProvider>
-      <WorkspaceContextProvider>{children}</WorkspaceContextProvider>
+      <GlobalShortcutsProvider>
+        <WorkspaceContextProvider>{children}</WorkspaceContextProvider>
+      </GlobalShortcutsProvider>
     </WorkspaceTabManagerProvider>
   );
 }

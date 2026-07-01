@@ -71,6 +71,12 @@ export type WorkspaceDataProvider = {
   writeDocument: (document: WorkspaceDocument, snapshot: DiagramSnapshot) => Promise<void>;
 };
 
+export type WorkspaceResourceIdentity = Pick<WorkspaceEntry | WorkspaceDocument | WorkspaceTab, 'providerKind' | 'rootId' | 'path'>;
+
+export function getWorkspaceResourceKey(resource: WorkspaceResourceIdentity) {
+  return `${resource.providerKind}:${resource.rootId ?? 'local'}:${resource.path}`;
+}
+
 export function getProviderKindFromId(id: string): WorkspaceProviderKind {
   const prefix = id.split('://')[0];
   if (prefix === 'native' || prefix === 'browser' || prefix === 'untitled') return prefix;

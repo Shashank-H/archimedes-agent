@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
-import type { WorkspaceEntry, WorkspaceFileId, WorkspaceRoot, WorkspaceTab } from '../../../lib/workspace/types';
+import { getWorkspaceResourceKey, type WorkspaceEntry, type WorkspaceFileId, type WorkspaceRoot, type WorkspaceTab } from '../../../lib/workspace/types';
 
 type WorkspaceTreeProps = {
   root: WorkspaceRoot;
@@ -53,8 +53,8 @@ export function WorkspaceTree({
   tabs,
   onSelectEntry,
 }: WorkspaceTreeProps) {
-  const dirtyTabIds = new Set(tabs.filter((tab) => tab.saveState === 'dirty').map((tab) => tab.id));
-  const openTabIds = new Set(tabs.map((tab) => tab.id));
+  const dirtyTabKeys = new Set(tabs.filter((tab) => tab.saveState === 'dirty').map(getWorkspaceResourceKey));
+  const openTabKeys = new Set(tabs.map(getWorkspaceResourceKey));
 
   const renderEntries = (parentId: WorkspaceFileId, depth: number): ReactNode => {
     const entries = entriesByParentId[parentId] ?? [];
@@ -65,8 +65,8 @@ export function WorkspaceTree({
           depth={depth}
           isExpanded={expandedEntryIds.has(entry.id)}
           isSelected={selectedEntryId === entry.id}
-          isOpen={openTabIds.has(entry.id)}
-          isDirty={dirtyTabIds.has(entry.id)}
+          isOpen={openTabKeys.has(getWorkspaceResourceKey(entry))}
+          isDirty={dirtyTabKeys.has(getWorkspaceResourceKey(entry))}
           onSelectEntry={onSelectEntry}
         />
         {entry.kind === 'directory' && expandedEntryIds.has(entry.id)

@@ -222,9 +222,11 @@ export function useAgentReview({ settings, messages, setSettings, setMessages, s
   }, [appendMessage, settings, setSettings]);
 
   useEffect(() => {
-    scheduleProactiveReview();
-    return () => window.clearTimeout(proactiveTimerRef.current);
-  }, [scheduleProactiveReview]);
+    if (!settings.autoReview) {
+      window.clearTimeout(proactiveTimerRef.current);
+      firstUnsentChangeAtRef.current = null;
+    }
+  }, [settings.autoReview]);
 
   useEffect(() => {
     return () => {

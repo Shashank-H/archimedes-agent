@@ -7,7 +7,6 @@ import { SidebarResizer } from './SidebarResizer';
 import { UnsupportedFileView } from './UnsupportedFileView';
 import { WorkspaceExplorer } from './WorkspaceExplorer';
 import { WorkspaceTabs } from './WorkspaceTabs';
-import { WorkspaceToolbar } from './WorkspaceToolbar';
 import { useSidebarResize } from '../hooks/useSidebarResize';
 
 export function WorkspaceShell({ children }: { children: ReactNode }) {
@@ -20,7 +19,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
     handleSnapshotChange,
     switchTab,
     closeTab,
-    saveActiveTab,
+    saveTab,
   } = useWorkspaceTabManager();
   const { handleWorkspaceSnapshotChanged } = useChat();
   const { sidebarWidth, handleResizePointerDown, handleResizeKeyDown } = useSidebarResize();
@@ -32,8 +31,13 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
     >
       <WorkspaceExplorer />
       <section className="canvas-pane">
-        <WorkspaceTabs tabs={tabs} activeTabId={activeTabId} onSwitchTab={switchTab} onCloseTab={closeTab} />
-        <WorkspaceToolbar activeTab={activeTab} onSave={() => void saveActiveTab()} />
+        <WorkspaceTabs
+          tabs={tabs}
+          activeTabId={activeTabId}
+          onSwitchTab={switchTab}
+          onCloseTab={closeTab}
+          onSaveTab={saveTab}
+        />
         <div className="workspace-editor-body">
           {activeTab?.loadState === 'error' ? (
             <div className="unsupported-file-view">
@@ -60,8 +64,9 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
               initialSnapshot={activeSnapshot}
               theme={settings.theme}
               onSnapshotChange={(snapshot) => {
-                handleSnapshotChange(snapshot);
-                handleWorkspaceSnapshotChanged();
+                if (handleSnapshotChange(activeTab.id, snapshot)) {
+                  handleWorkspaceSnapshotChanged();
+                }
               }}
               onApiReady={setDiagramApi}
             />

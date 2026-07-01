@@ -19,6 +19,10 @@
 - For Radix portals, ensure app theme variables are available globally (for example on `document.documentElement`) rather than passing theme props through low-level dialog/popover components.
 - When wrapping Radix primitives, style against Radix state attributes such as `data-state="checked"`/`unchecked` and preserve app-specific styling through shared wrappers.
 - Links styled as buttons/actions must explicitly define normal, visited, hover, and active colors to avoid browser link-state color drift.
+- Split CSS by ownership instead of continuously adding to a monolithic stylesheet: shared primitives may live in global/shared CSS, while page/feature/component-specific styles should live in nearby CSS files imported by their owner.
+- When CSS for a feature grows beyond a small localized tweak or introduces a reusable component, create a dedicated stylesheet/module for that feature/component and keep selectors scoped by a clear namespace.
+- Do not add new large sections to `styles.css` unless they are truly global tokens, resets, or cross-app primitives; prefer incremental migration toward smaller maintainable CSS files when touching existing feature styles.
+- Always use theme tokens/CSS variables for colors in UI styles. Do not introduce hardcoded hex/rgb/rgba colors in component or feature CSS unless defining/updating the theme tokens themselves.
 
 ## Architecture rules
 
