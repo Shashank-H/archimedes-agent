@@ -1,4 +1,3 @@
-import { AssistantHeader } from '../../components/ui/AssistantHeader';
 import { useChat } from '../../providers/chat/ChatContext';
 import { useWorkspace } from '../../providers/workspace/WorkspaceContext';
 import { ChatComposer } from './components/ChatComposer';
@@ -9,7 +8,6 @@ export function ChatPage() {
   const {
     messages,
     isBusy,
-    status,
     handleSendChat,
     handleReview,
     handleClearChat,
@@ -17,7 +15,6 @@ export function ChatPage() {
 
   return (
     <>
-      <AssistantHeader status={status} />
       <MessageList messages={messages} />
       <ChatComposer
         messages={messages}

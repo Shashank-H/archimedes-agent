@@ -1,5 +1,4 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { AssistantHeader } from '../../components/ui/AssistantHeader';
 import { AppDialog, AppDialogTitle } from '../../components/ui/AppDialog';
 import { AppSwitch } from '../../components/ui/AppSwitch';
 import { Icon } from '../../components/ui/icons';
@@ -22,7 +21,6 @@ export function SettingsPage() {
   const { settings, handleSettingsChange: onSettingsChange } = useWorkspace();
   const {
     isBusy,
-    status,
     currentModelValidationError: modelValidationError,
     handleTestConnection: onTestConnection,
   } = useChat();
@@ -118,9 +116,7 @@ export function SettingsPage() {
 
   return (
     <>
-      <AssistantHeader status={status} />
-
-        <section className="settings-section">
+      <section className="settings-section">
           <SettingsAccordion
             open={providerConfigOpen}
             onOpenChange={setProviderConfigOpen}

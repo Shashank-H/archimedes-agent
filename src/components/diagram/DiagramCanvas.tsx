@@ -6,6 +6,7 @@ import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types';
 import type { DiagramSnapshot } from '../../types';
 
 type DiagramCanvasProps = {
+  documentKey: string;
   initialSnapshot: DiagramSnapshot | null;
   theme: 'light' | 'dark';
   onSnapshotChange: (snapshot: DiagramSnapshot) => void;
@@ -27,7 +28,7 @@ function persistenceAppState(appState: AppState): Partial<AppState> {
   };
 }
 
-export function DiagramCanvas({ initialSnapshot, theme, onSnapshotChange, onApiReady }: DiagramCanvasProps) {
+export function DiagramCanvas({ documentKey, initialSnapshot, theme, onSnapshotChange, onApiReady }: DiagramCanvasProps) {
   const initialData = useMemo(
     () =>
       initialSnapshot
@@ -37,7 +38,12 @@ export function DiagramCanvas({ initialSnapshot, theme, onSnapshotChange, onApiR
             files: initialSnapshot.files,
           }
         : { appState: { theme } },
-    [initialSnapshot, theme],
+    // Excalidraw treats initialData as initialization input. If this depends on
+    // the live snapshot, each onChange can feed a new initialData object back
+    // into Excalidraw and create an update loop. The component is keyed by
+    // documentKey, so switching documents remounts with a fresh snapshot.
+    // Theme changes are handled by the dedicated `theme` prop below.
+    [documentKey],
   );
 
   return (

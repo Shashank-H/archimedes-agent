@@ -10,6 +10,8 @@
 - Move request orchestration, settings decisions, derived state, side effects, and testable workflows into hooks rather than embedding them directly in component files.
 - Design hooks with focused inputs/outputs so they are easier to unit test independently from the rendered component.
 - Keep constants, enum-like values, reusable copy, option lists, and static instruction templates in nearby `constants.ts` files; keep pure formatting/detection helpers in `utils.ts` files.
+- Avoid scattering hardcoded data, strings, route/view names, options, or mode mappings directly through components/hooks; model them as typed objects, constants, enums, lookup maps, or other extendable structures that make future additions localized and low-risk.
+- Do not create bespoke or band-aid implementations just to satisfy the current two-case UI; prefer generic configuration-driven flows, derived state, and reusable actions so adding another view/mode/option does not require duplicating functions or branching throughout the code.
 - Do not duplicate reusable UI primitives such as cards, accordions, dialogs, switches, headers, or icon wrappers across pages; extract shared or feature-local components instead.
 - For routed workspace-style UIs, keep the persistent workspace/shell outside the router when panes should be independently controlled; route only the pane content that actually changes.
 - Prefer `MemoryRouter` for internal pane navigation that should not affect browser/history URLs.

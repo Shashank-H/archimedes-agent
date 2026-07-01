@@ -25,7 +25,6 @@ export const OPEN_SOURCE_CREDITS = [
   { name: 'Tauri', packageName: '@tauri-apps/api / @tauri-apps/cli', license: 'Apache-2.0 OR MIT', url: 'https://tauri.app', note: 'Desktop app runtime, APIs, and build tooling.' },
   { name: 'PostHog JS', packageName: 'posthog-js', license: 'See package LICENSE', url: 'https://posthog.com/docs/libraries/js', note: 'Privacy-aware product analytics client.' },
   { name: 'Radix UI', packageName: '@radix-ui/*', license: 'MIT', url: 'https://www.radix-ui.com', note: 'Accessible primitives and icons used for dialogs, switches, tooltips, and app iconography.' },
-  { name: 'React Router', packageName: 'react-router-dom', license: 'MIT', url: 'https://reactrouter.com', note: 'Memory routing for assistant pane navigation.' },
   { name: 'React', packageName: 'react / react-dom', license: 'MIT', url: 'https://react.dev', note: 'User-interface rendering framework.' },
   { name: 'Vite', packageName: 'vite / @vitejs/plugin-react', license: 'MIT', url: 'https://vite.dev', note: 'Development server and production bundler.' },
   { name: 'TypeScript', packageName: 'typescript', license: 'Apache-2.0', url: 'https://www.typescriptlang.org', note: 'Typed JavaScript language tooling.' },

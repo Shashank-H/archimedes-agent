@@ -1,10 +1,20 @@
-import { Link, useLocation } from 'react-router-dom';
 import { AppTooltip } from '../AppTooltip';
-import { Icon } from './icons';
+import { Icon, type IconName } from './icons';
 
-export function AssistantHeader({ status }: { status: string }) {
-  const location = useLocation();
-  const isSettings = location.pathname.includes('/settings');
+type AssistantHeaderToggleAction = {
+  label: string;
+  ariaLabel: string;
+  tooltipLabel: string;
+  iconName: IconName;
+};
+
+type AssistantHeaderProps = {
+  status: string;
+  toggleAction: AssistantHeaderToggleAction;
+  onToggleView: () => void;
+};
+
+export function AssistantHeader({ status, toggleAction, onToggleView }: AssistantHeaderProps) {
   return (
     <header className="assistant-header">
       <div className="assistant-title">
@@ -16,15 +26,16 @@ export function AssistantHeader({ status }: { status: string }) {
           <div className="assistant-heading-row">
             <h1>Archimedes Agent</h1>
             <div className="assistant-header-actions">
-              <AppTooltip label={isSettings ? 'Back to chat' : 'Settings'}>
-                <Link
+              <AppTooltip label={toggleAction.tooltipLabel}>
+                <button
+                  type="button"
                   className="settings-toggle"
-                  to={isSettings ? '/chat' : '/settings'}
-                  aria-label={isSettings ? 'Back to chat' : 'Open settings'}
+                  onClick={onToggleView}
+                  aria-label={toggleAction.ariaLabel}
                 >
-                  <Icon name={isSettings ? 'message' : 'settings'} size={15} />
-                  <span>{isSettings ? 'Chat' : 'Settings'}</span>
-                </Link>
+                  <Icon name={toggleAction.iconName} size={15} />
+                  <span>{toggleAction.label}</span>
+                </button>
               </AppTooltip>
             </div>
           </div>
