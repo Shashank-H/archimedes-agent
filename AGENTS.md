@@ -3,11 +3,20 @@
 ## React page/component changes
 
 - When adding tooltips/popovers/menus, use a shared component or established UI library primitive (for example Radix) instead of one-off CSS pseudo-elements or native `title` tooltips; keep tooltip styling centralized so all tooltips look consistent and theme-appropriate.
-- When adding a new third-party library/package, update the in-app open source attributions list in the same change.
+- Prefer Radix UI primitives/icons for accessible reusable UI building blocks whenever an equivalent exists (dialogs, switches, selects, popovers, tooltips, icons), then layer app-specific theming through shared wrappers/components instead of one-off UI built from scratch.
+- When adding a new third-party library/package, update the in-app open source attributions list in the same change; if multiple packages come from one provider (for example `@radix-ui/*`), prefer a single provider-level attribution unless separate licenses require otherwise.
 - When creating or modifying existing pages/components, prefer custom hooks for stateful and business logic.
 - Keep component markup minimal: components should primarily call hooks, read returned state/actions, and render UI.
 - Move request orchestration, settings decisions, derived state, side effects, and testable workflows into hooks rather than embedding them directly in component files.
 - Design hooks with focused inputs/outputs so they are easier to unit test independently from the rendered component.
+- Keep constants, enum-like values, reusable copy, option lists, and static instruction templates in nearby `constants.ts` files; keep pure formatting/detection helpers in `utils.ts` files.
+- Do not duplicate reusable UI primitives such as cards, accordions, dialogs, switches, headers, or icon wrappers across pages; extract shared or feature-local components instead.
+- For routed workspace-style UIs, keep the persistent workspace/shell outside the router when panes should be independently controlled; route only the pane content that actually changes.
+- Prefer `MemoryRouter` for internal pane navigation that should not affect browser/history URLs.
+- Keep data ownership hierarchical: higher-level workspace providers should own only workspace-wide state, while feature providers (for example chat/settings) own feature-specific data and may depend on workspace context, not the reverse.
+- For Radix portals, ensure app theme variables are available globally (for example on `document.documentElement`) rather than passing theme props through low-level dialog/popover components.
+- When wrapping Radix primitives, style against Radix state attributes such as `data-state="checked"`/`unchecked` and preserve app-specific styling through shared wrappers.
+- Links styled as buttons/actions must explicitly define normal, visited, hover, and active colors to avoid browser link-state color drift.
 
 ## Architecture rules
 

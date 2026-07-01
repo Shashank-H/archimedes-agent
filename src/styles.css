@@ -223,11 +223,19 @@ body.is-resizing-sidebar .sidebar-resizer::after { opacity: 1; }
   padding: 0 10px;
   border-radius: var(--radius-sm);
   background: var(--canvas);
+  color: var(--ink);
+  text-decoration: none;
   box-shadow: var(--shadow-1);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 7px;
+}
+.settings-toggle:visited,
+.settings-toggle:hover,
+.settings-toggle:active {
+  color: var(--ink);
+  text-decoration: none;
 }
 @container (max-width: 390px) {
   .settings-toggle {
@@ -1055,11 +1063,13 @@ body.is-resizing-sidebar .sidebar-resizer::after { opacity: 1; }
   transform: translateX(0);
   transition: transform 160ms ease, background 160ms ease;
 }
-.settings-switch[data-state="on"] {
+.settings-switch[data-state="on"],
+.settings-switch[data-state="checked"] {
   background: var(--ink);
   border-color: var(--ink);
 }
-.settings-switch[data-state="on"] .settings-switch-thumb {
+.settings-switch[data-state="on"] .settings-switch-thumb,
+.settings-switch[data-state="checked"] .settings-switch-thumb {
   background: var(--canvas);
   transform: translateX(18px);
 }
@@ -1074,7 +1084,8 @@ body.is-resizing-sidebar .sidebar-resizer::after { opacity: 1; }
   width: 14px;
   height: 14px;
 }
-.settings-switch--compact[data-state="on"] .settings-switch-thumb {
+.settings-switch--compact[data-state="on"] .settings-switch-thumb,
+.settings-switch--compact[data-state="checked"] .settings-switch-thumb {
   transform: translateX(14px);
 }
 .privacy-note {
@@ -1246,6 +1257,10 @@ body.is-resizing-sidebar .sidebar-resizer::after { opacity: 1; }
   backdrop-filter: blur(8px);
 }
 .credits-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 101;
   width: min(640px, calc(100vw - 40px));
   max-height: min(760px, calc(100dvh - 40px));
   overflow: hidden;
@@ -1255,6 +1270,7 @@ body.is-resizing-sidebar .sidebar-resizer::after { opacity: 1; }
   background: var(--canvas-soft);
   color: var(--ink);
   box-shadow: 0 28px 90px -32px rgba(0, 0, 0, 0.58), var(--shadow-1);
+  transform: translate(-50%, -50%);
 }
 .usage-logs-modal {
   width: min(500px, calc(100vw - 40px));

@@ -3,7 +3,7 @@ import { Excalidraw } from '@excalidraw/excalidraw';
 import '@excalidraw/excalidraw/index.css';
 import type { AppState, BinaryFiles, ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types';
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types';
-import type { DiagramSnapshot } from '../types';
+import type { DiagramSnapshot } from '../../types';
 
 type DiagramCanvasProps = {
   initialSnapshot: DiagramSnapshot | null;

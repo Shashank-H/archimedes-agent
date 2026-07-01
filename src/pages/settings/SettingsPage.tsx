@@ -1,246 +1,39 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { MarkdownMessage } from './MarkdownMessage';
-import { AppTooltip } from './AppTooltip';
-import { CustomSelect } from './CustomSelect';
-import { TooltipIconAction } from './TooltipIconAction';
-import { useProviderSettings } from '../hooks/useProviderSettings';
-import { useModelSelection } from '../hooks/useModelSelection';
-import { useMaskedApiKeyInput } from '../hooks/useMaskedApiKeyInput';
-import { useReviewTimingSettings } from '../hooks/useReviewTimingSettings';
-import { settingsValidationKey } from '../lib/settingsValidation';
-import type { AppSettings, ChatMessage, LlmProvider, ThinkingLevel } from '../types';
+import { AssistantHeader } from '../../components/ui/AssistantHeader';
+import { AppDialog, AppDialogTitle } from '../../components/ui/AppDialog';
+import { AppSwitch } from '../../components/ui/AppSwitch';
+import { Icon } from '../../components/ui/icons';
+import { useChat } from '../../providers/chat/ChatContext';
+import { useWorkspace } from '../../providers/workspace/WorkspaceContext';
+import { AppTooltip } from '../../components/AppTooltip';
+import { CustomSelect } from '../../components/CustomSelect';
+import { TooltipIconAction } from '../../components/TooltipIconAction';
+import { useProviderSettings } from '../../hooks/useProviderSettings';
+import { useModelSelection } from '../../hooks/useModelSelection';
+import { useMaskedApiKeyInput } from '../../hooks/useMaskedApiKeyInput';
+import { useReviewTimingSettings } from '../../hooks/useReviewTimingSettings';
+import { settingsValidationKey } from '../../lib/settingsValidation';
+import type { LlmProvider } from '../../types';
+import { OLLAMA_OS_OPTIONS, OLLAMA_VISION_MODELS_URL, OPEN_SOURCE_CREDITS, PROJECT_GITHUB_URL, RECOMMENDED_VISION_MODELS, X_PROFILE_URL } from './constants';
+import { SettingsAccordion } from './components/SettingsAccordion';
+import { useOllamaOriginInstructions } from './hooks/useOllamaOriginInstructions';
 
-type AssistantPanelProps = {
-  messages: ChatMessage[];
-  settings: AppSettings;
-  isBusy: boolean;
-  status: string;
-  modelValidationError?: string | null;
-  onSendChat: (prompt: string) => void;
-  onReview: (prompt?: string) => void;
-  onSettingsChange: (settings: AppSettings) => void;
-  onClearChat: () => void;
-  onTestConnection: () => boolean | Promise<boolean>;
-};
-
-type IconName =
-  | 'brain'
-  | 'settings'
-  | 'message'
-  | 'plug'
-  | 'moon'
-  | 'sun'
-  | 'zap'
-  | 'sparkles'
-  | 'play'
-  | 'pause'
-  | 'send'
-  | 'trash'
-  | 'user'
-  | 'sliders'
-  | 'info'
-  | 'x'
-  | 'github'
-  | 'eye'
-  | 'copy'
-  | 'check'
-  | 'chevronDown';
-
-function Icon({ name, size = 16 }: { name: IconName; size?: number }) {
-  const common = {
-    width: size,
-    height: size,
-    viewBox: '0 0 24 24',
-    fill: 'none',
-    stroke: 'currentColor',
-    strokeWidth: 2,
-    strokeLinecap: 'round' as const,
-    strokeLinejoin: 'round' as const,
-    'aria-hidden': true,
-  };
-
-  switch (name) {
-    case 'brain':
-      return <svg {...common}><path d="M9.5 2A3.5 3.5 0 0 0 6 5.5v.3A3.7 3.7 0 0 0 3 9.5c0 1 .4 2 1.1 2.7A4.4 4.4 0 0 0 3 15.2 4.8 4.8 0 0 0 7.8 20H10V2h-.5Z"/><path d="M14.5 2A3.5 3.5 0 0 1 18 5.5v.3a3.7 3.7 0 0 1 3 3.7c0 1-.4 2-1.1 2.7a4.4 4.4 0 0 1 1.1 3A4.8 4.8 0 0 1 16.2 20H14V2h.5Z"/><path d="M7.5 9.5H10M14 9.5h2.5M8 14h2M14 14h2"/></svg>;
-    case 'settings':
-      return <svg {...common}><path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1A2 2 0 1 1 4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1A2 2 0 1 1 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1A2 2 0 1 1 19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.1a2 2 0 1 1 0 4H21a1.7 1.7 0 0 0-1.6 1Z"/></svg>;
-    case 'message':
-      return <svg {...common}><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z"/></svg>;
-    case 'plug':
-      return <svg {...common}><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a6 6 0 0 1-12 0V8h12Z"/></svg>;
-    case 'moon':
-      return <svg {...common}><path d="M20.9 13.5A8.5 8.5 0 1 1 10.5 3.1 6.7 6.7 0 0 0 20.9 13.5Z"/></svg>;
-    case 'sun':
-      return <svg {...common}><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>;
-    case 'zap':
-      return <svg {...common}><path d="M13 2 3 14h8l-1 8 11-14h-8l1-6Z"/></svg>;
-    case 'sparkles':
-      return <svg {...common}><path d="m12 3 1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3Z"/><path d="m19 15 .8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15Z"/><path d="m5 14 .8 2.2L8 17l-2.2.8L5 20l-.8-2.2L2 17l2.2-.8L5 14Z"/></svg>;
-    case 'play':
-      return <svg {...common}><path d="m8 5 11 7-11 7V5Z"/></svg>;
-    case 'pause':
-      return <svg {...common}><path d="M10 4H6v16h4V4Z"/><path d="M18 4h-4v16h4V4Z"/></svg>;
-    case 'send':
-      return <svg {...common}><path d="m22 2-7 20-4-9-9-4 20-7Z"/><path d="M22 2 11 13"/></svg>;
-    case 'trash':
-      return <svg {...common}><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v5"/><path d="M14 11v5"/></svg>;
-    case 'user':
-      return <svg {...common}><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>;
-    case 'sliders':
-      return <svg {...common}><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></svg>;
-    case 'info':
-      return <svg {...common}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>;
-    case 'x':
-      return <svg {...common}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>;
-    case 'github':
-      return <svg {...common}><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.1-1.3-.3-2.6-1.2-3.6.2-1.2.2-2.5-.1-3.6 0 0-1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 1.5 5.5 1.8 5.5 1.8c-.3 1.1-.4 2.4-.1 3.6A5.3 5.3 0 0 0 4.2 9c0 3.5 3 5.5 6 5.5-.5.5-.8 1.2-.9 2"/><path d="M9 18c-4.5 2-5-2-7-2"/></svg>;
-    case 'eye':
-      return <svg {...common}><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>;
-    case 'copy':
-      return <svg {...common}><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>;
-    case 'check':
-      return <svg {...common}><path d="M20 6 9 17l-5-5"/></svg>;
-    case 'chevronDown':
-      return <svg {...common}><path d="m6 9 6 6 6-6"/></svg>;
-  }
-}
-
-const PROJECT_GITHUB_URL = 'https://github.com/Shashank-H/archimedes-agent';
-const X_PROFILE_URL = 'https://x.com/ShashankH_';
-const OLLAMA_VISION_MODELS_URL = 'https://ollama.com/search?c=vision';
-const THINKING_OPTIONS = [
-  { value: 'off', label: 'Off' },
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
-];
-
-const RECOMMENDED_VISION_MODELS = [
-  {
-    name: 'Gemma 4 E2B',
-    tag: 'gemma4:e2b',
-    bestFor: 'System requirements: under 8GB RAM. Choose this for lightweight local diagram review on modest machines.',
-    command: 'ollama pull gemma4:e2b',
-    url: 'https://ollama.com/library/gemma4:e2b',
-  },
-  {
-    name: 'Gemma 4 E4B',
-    tag: 'gemma4:e4b',
-    bestFor: 'System requirements: 16GB RAM recommended. Choose this for higher-quality Archimedes diagram review.',
-    command: 'ollama pull gemma4:e4b',
-    url: 'https://ollama.com/library/gemma4:e4b',
-  },
-];
-
-const OPEN_SOURCE_CREDITS = [
-  { name: 'Design.md Vercel analysis', packageName: 'getdesign.md/vercel/design-md', license: 'Independent public design analysis', url: 'https://getdesign.md/vercel/design-md', note: 'Vercel-inspired DESIGN.md reference used for visual direction; not affiliated with Vercel.' },
-  { name: 'Excalidraw', packageName: '@excalidraw/excalidraw', license: 'MIT', url: 'https://github.com/excalidraw/excalidraw', note: 'Embeddable whiteboard and diagram canvas.' },
-  { name: 'Tauri', packageName: '@tauri-apps/api / @tauri-apps/cli', license: 'Apache-2.0 OR MIT', url: 'https://tauri.app', note: 'Desktop app runtime, APIs, and build tooling.' },
-  { name: 'PostHog JS', packageName: 'posthog-js', license: 'See package LICENSE', url: 'https://posthog.com/docs/libraries/js', note: 'Privacy-aware product analytics client.' },
-  { name: 'Radix UI Tooltip', packageName: '@radix-ui/react-tooltip', license: 'MIT', url: 'https://www.radix-ui.com/primitives/docs/components/tooltip', note: 'Accessible Radix UI tooltip primitive used for consistent in-app tooltip behavior.' },
-  { name: 'React', packageName: 'react / react-dom', license: 'MIT', url: 'https://react.dev', note: 'User-interface rendering framework.' },
-  { name: 'Vite', packageName: 'vite / @vitejs/plugin-react', license: 'MIT', url: 'https://vite.dev', note: 'Development server and production bundler.' },
-  { name: 'TypeScript', packageName: 'typescript', license: 'Apache-2.0', url: 'https://www.typescriptlang.org', note: 'Typed JavaScript language tooling.' },
-  { name: 'DefinitelyTyped', packageName: '@types/node / @types/react / @types/react-dom', license: 'MIT', url: 'https://github.com/DefinitelyTyped/DefinitelyTyped', note: 'Community TypeScript type definitions.' },
-];
-
-type LocalOllamaOs = 'windows' | 'mac' | 'linux';
-
-const OLLAMA_OS_OPTIONS: Array<{ value: LocalOllamaOs; label: string }> = [
-  { value: 'windows', label: 'Windows' },
-  { value: 'mac', label: 'macOS' },
-  { value: 'linux', label: 'Linux' },
-];
-
-function detectBrowserOs(): LocalOllamaOs {
-  if (typeof navigator === 'undefined') return 'mac';
-
-  const navigatorWithUserAgentData = navigator as Navigator & { userAgentData?: { platform?: string } };
-  const osHint = `${navigatorWithUserAgentData.userAgentData?.platform ?? ''} ${navigator.platform} ${navigator.userAgent}`.toLowerCase();
-
-  if (osHint.includes('win')) return 'windows';
-  if (osHint.includes('mac') || osHint.includes('iphone') || osHint.includes('ipad')) return 'mac';
-  if (osHint.includes('linux') || osHint.includes('x11') || osHint.includes('android') || osHint.includes('cros')) return 'linux';
-
-  return 'mac';
-}
-
-function useOllamaOriginInstructions(siteOrigin: string) {
-  const detectedOsRef = useRef<LocalOllamaOs | null>(null);
-  if (detectedOsRef.current === null) detectedOsRef.current = detectBrowserOs();
-
-  const [selectedOs, setSelectedOs] = useState<LocalOllamaOs>(detectedOsRef.current);
-  const instructions: Record<LocalOllamaOs, { backgroundCommand: string; permanentCommand: string; permanentNote: string; verifyCommand: string; description: string; quitSteps: string[]; quitCommand?: string }> = {
-    windows: {
-      backgroundCommand: `Start-Process powershell -WindowStyle Hidden -ArgumentList '-NoProfile -Command "$env:OLLAMA_ORIGINS=\"${siteOrigin}\"; ollama serve"'`,
-      permanentCommand: `setx OLLAMA_ORIGINS "${siteOrigin}"`,
-      permanentNote: 'Recommended. After running setx, quit and reopen Ollama. Windows applies setx values only to new processes.',
-      verifyCommand: `curl.exe -i -H "Origin: ${siteOrigin}" http://localhost:11434/api/tags`,
-      description: 'Use these steps to permanently allow this site, then reopen Ollama normally.',
-      quitSteps: [
-        'Click the Ollama llama icon in the Windows system tray and choose Quit, if it is visible.',
-        'If it is not visible, open Task Manager and end any Ollama or ollama.exe process.',
-        'PowerShell alternative:',
-      ],
-      quitCommand: 'taskkill /IM ollama.exe /F',
-    },
-    mac: {
-      backgroundCommand: `mkdir -p ~/.ollama && nohup env OLLAMA_ORIGINS="${siteOrigin}" ollama serve > ~/.ollama/ollama.log 2>&1 &`,
-      permanentCommand: `launchctl setenv OLLAMA_ORIGINS "${siteOrigin}"`,
-      permanentNote: 'Recommended for the Ollama desktop app. After running launchctl, quit and reopen the Ollama app. You may need to run it again after a reboot.',
-      verifyCommand: `curl -i -H "Origin: ${siteOrigin}" http://localhost:11434/api/tags`,
-      description: 'Use these steps to allow this site for the Ollama app, then reopen Ollama normally.',
-      quitSteps: [
-        'Click the Ollama llama icon in the macOS menu bar and choose Quit Ollama.',
-        'If the menu bar icon is not available, run the terminal command below to stop the background process.',
-      ],
-      quitCommand: 'pkill ollama',
-    },
-    linux: {
-      backgroundCommand: `sudo systemctl stop ollama 2>/dev/null || true; pkill ollama 2>/dev/null || true; mkdir -p ~/.ollama && nohup env OLLAMA_ORIGINS="${siteOrigin}" ollama serve > ~/.ollama/ollama.log 2>&1 &`,
-      permanentCommand: `sudo mkdir -p /etc/systemd/system/ollama.service.d && printf '%s\n' '[Service]' 'Environment="OLLAMA_ORIGINS=${siteOrigin}"' | sudo tee /etc/systemd/system/ollama.service.d/override.conf >/dev/null && sudo systemctl daemon-reload && sudo systemctl restart ollama`,
-      permanentNote: 'Recommended when Ollama is installed as a systemd service. It writes a service override and restarts Ollama automatically.',
-      verifyCommand: `curl -i -H "Origin: ${siteOrigin}" http://localhost:11434/api/tags`,
-      description: 'Use these steps to permanently allow this site for the Ollama service.',
-      quitSteps: [
-        'If Ollama is running as a systemd service, stop it first.',
-        'If you started Ollama manually, stop the process instead.',
-      ],
-      quitCommand: 'sudo systemctl stop ollama 2>/dev/null || true; pkill ollama 2>/dev/null || true',
-    },
-  };
-
-  return {
-    detectedOs: detectedOsRef.current,
-    selectedInstruction: instructions[selectedOs],
-    selectedOs,
-    setSelectedOs,
-  };
-}
-
-export function AssistantPanel({
-  messages,
-  settings,
-  isBusy,
-  status,
-  modelValidationError,
-  onSendChat,
-  onReview,
-  onSettingsChange,
-  onClearChat,
-  onTestConnection,
-}: AssistantPanelProps) {
+export function SettingsPage() {
+  const { settings, handleSettingsChange: onSettingsChange } = useWorkspace();
+  const {
+    isBusy,
+    status,
+    currentModelValidationError: modelValidationError,
+    handleTestConnection: onTestConnection,
+  } = useChat();
   const providerConfigurationKey = settingsValidationKey(settings);
   const providerConfigurationIsTested = settings.providerConfigurationTestedKey === providerConfigurationKey;
-  const [prompt, setPrompt] = useState('');
-  const [showSettings, setShowSettings] = useState(false);
   const [showCredits, setShowCredits] = useState(false);
   const [showUsageLogsInfo, setShowUsageLogsInfo] = useState(false);
   const [providerConfigOpen, setProviderConfigOpen] = useState(!providerConfigurationIsTested);
   const [reviewTimingOpen, setReviewTimingOpen] = useState(false);
   const [showOllamaSetup, setShowOllamaSetup] = useState(false);
   const [copiedCommand, setCopiedCommand] = useState<string | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const modelListboxId = useId();
   const copyResetTimeoutRef = useRef<number | null>(null);
   const {
@@ -258,16 +51,6 @@ export function AssistantPanel({
   const currentSiteOrigin = typeof window === 'undefined' ? 'https://this-site.example' : window.location.origin;
   const ollamaOriginInstructions = useOllamaOriginInstructions(currentSiteOrigin);
 
-  const resizePromptInput = () => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-    textarea.style.height = 'auto';
-    textarea.style.height = `${Math.min(textarea.scrollHeight, 168)}px`;
-  };
-
-  useEffect(() => {
-    resizePromptInput();
-  }, [prompt]);
 
   useEffect(() => {
     setProviderConfigOpen(!providerConfigurationIsTested);
@@ -293,12 +76,6 @@ export function AssistantPanel({
     };
   }, []);
 
-  const submit = () => {
-    const value = prompt.trim();
-    if (!value || isBusy) return;
-    onSendChat(value);
-    setPrompt('');
-  };
 
   const copyCommand = (command: string) => {
     void navigator.clipboard?.writeText(command);
@@ -340,51 +117,16 @@ export function AssistantPanel({
   };
 
   return (
-    <aside className="assistant-panel">
-      <header className="assistant-header">
-        <div className="assistant-title">
-          <span className="assistant-mark">
-            <img className="logo-light" src="/logos/logo-light.svg" alt="" aria-hidden="true" />
-            <img className="logo-dark" src="/logos/logo-dark.svg" alt="" aria-hidden="true" />
-          </span>
-          <div className="assistant-title-copy">
-            <div className="assistant-heading-row">
-              <h1>Archimedes Agent</h1>
-              <div className="assistant-header-actions">
-                <AppTooltip label={showSettings ? 'Back to chat' : 'Settings'}>
-                  <button
-                    className="settings-toggle"
-                    onClick={() => setShowSettings((value) => !value)}
-                    aria-label={showSettings ? 'Back to chat' : 'Open settings'}
-                  >
-                    <Icon name={showSettings ? 'message' : 'settings'} size={15} />
-                    <span>{showSettings ? 'Chat' : 'Settings'}</span>
-                  </button>
-                </AppTooltip>
-              </div>
-            </div>
-            <p>{status}</p>
-          </div>
-        </div>
-      </header>
+    <>
+      <AssistantHeader status={status} />
 
-      {showSettings ? (
         <section className="settings-section">
-          <div className="provider-config-accordion" data-open={providerConfigOpen ? 'true' : 'false'}>
-            <button
-              type="button"
-              className="provider-config-summary"
-              onClick={() => setProviderConfigOpen((value) => !value)}
-              aria-expanded={providerConfigOpen}
-            >
-              <span>
-                <strong>Provider configuration</strong>
-                <small>{providerMetadata.label} · {settings.model}</small>
-              </span>
-              <Icon name="chevronDown" size={15} />
-            </button>
-            {providerConfigOpen && (
-              <div className="provider-config-content">
+          <SettingsAccordion
+            open={providerConfigOpen}
+            onOpenChange={setProviderConfigOpen}
+            title="Provider configuration"
+            summary={`${providerMetadata.label} · ${settings.model}`}
+          >
                 <label>
                   Provider
                   <CustomSelect
@@ -502,27 +244,15 @@ export function AssistantPanel({
                     {testConnectionLabel}
                   </button>
                 </div>
-              </div>
-            )}
-          </div>
-          <div className="provider-config-accordion" data-open={reviewTimingOpen ? 'true' : 'false'}>
-            <button
-              type="button"
-              className="provider-config-summary"
-              onClick={() => {
-                if (reviewTimingOpen) reviewTiming.resetDraft();
-                setReviewTimingOpen((value) => !value);
-              }}
-              aria-expanded={reviewTimingOpen}
-            >
-              <span>
-                <strong>Proactive review timing</strong>
-                <small>{reviewTiming.proactiveDelaySeconds}s debounce · {reviewTiming.proactiveTimeoutSeconds}s timeout</small>
-              </span>
-              <Icon name="chevronDown" size={15} />
-            </button>
-            {reviewTimingOpen && (
-              <div className="provider-config-content settings-timing-content">
+          </SettingsAccordion>
+          <SettingsAccordion
+            open={reviewTimingOpen}
+            onOpenChange={setReviewTimingOpen}
+            onClosing={reviewTiming.resetDraft}
+            title="Proactive review timing"
+            summary={`${reviewTiming.proactiveDelaySeconds}s debounce · ${reviewTiming.proactiveTimeoutSeconds}s timeout`}
+          >
+              <div className="settings-timing-content">
                 <p className="settings-option-description">
                   Tune how quickly Archimedes reviews changes while proactive mode is enabled.
                 </p>
@@ -579,8 +309,7 @@ export function AssistantPanel({
                   </button>
                 </div>
               </div>
-            )}
-          </div>
+          </SettingsAccordion>
           <div className="settings-option-card">
             <span className="settings-option-icon" aria-hidden="true">
               <Icon name="message" size={16} />
@@ -599,22 +328,16 @@ export function AssistantPanel({
               </p>
               <span className="settings-option-warning">May increase token usage</span>
             </div>
-            <button
-              type="button"
-              className="settings-switch"
-              role="switch"
-              aria-checked={settings.includeHistoryInProactiveReviews}
-              aria-label="Include chat history in proactive reviews"
-              data-state={settings.includeHistoryInProactiveReviews ? 'on' : 'off'}
-              onClick={() =>
+            <AppSwitch
+              checked={settings.includeHistoryInProactiveReviews}
+              ariaLabel="Include chat history in proactive reviews"
+              onCheckedChange={(checked) =>
                 onSettingsChange({
                   ...settings,
-                  includeHistoryInProactiveReviews: !settings.includeHistoryInProactiveReviews,
+                  includeHistoryInProactiveReviews: checked,
                 })
               }
-            >
-              <span className="settings-switch-thumb" />
-            </button>
+            />
           </div>
           <div className="settings-bottom-actions">
             <div className="settings-footer-controls">
@@ -653,112 +376,16 @@ export function AssistantPanel({
             </footer>
           </div>
         </section>
-      ) : (
-        <>
-          <div className="message-list">
-            {messages.length === 0 ? (
-              <div className="empty-state">
-                <span className="empty-state-kicker"><Icon name="sparkles" size={14} /> No review yet</span>
-                <strong>Draw a system design, then ask Archimedes for a review.</strong>
-                <p>Switch to proactive mode for automatic diagram reviews, or keep manual mode and trigger review from the composer.</p>
-              </div>
-            ) : (
-              messages.map((message) => (
-                <article key={message.id} className={`message ${message.role} ${message.kind ?? ''}`}>
-                  <div className="message-meta">
-                    <span>{message.role === 'assistant' ? 'Archimedes' : message.role}</span>
-                    {message.kind && <small>{message.kind}</small>}
-                  </div>
-                  <div className="message-content">
-                    <MarkdownMessage content={message.content} />
-                  </div>
-                </article>
-              ))
-            )}
-          </div>
-
-          <footer className="composer">
-            <div className="composer-options">
-              <AppTooltip label="Thinking level">
-                <div className="thinking-control">
-                  <Icon name="brain" size={15} />
-                  <CustomSelect
-                    ariaLabel="Thinking level"
-                    value={settings.thinkingLevel}
-                    options={THINKING_OPTIONS}
-                    onChange={(value) => onSettingsChange({ ...settings, thinkingLevel: value as ThinkingLevel })}
-                    disabled={isBusy}
-                    className="thinking-select"
-                  />
-                </div>
-              </AppTooltip>
-              <AppTooltip label="Clear chat">
-                <button
-                  type="button"
-                  className="composer-clear-button clear-button"
-                  onClick={onClearChat}
-                  disabled={isBusy || messages.length === 0}
-                  aria-label="Clear chat"
-                >
-                  <Icon name="trash" size={15} />
-                </button>
-              </AppTooltip>
-            </div>
-
-            <div className="composer-input-wrap">
-              <textarea
-                ref={textareaRef}
-                rows={1}
-                placeholder="Ask about the diagram, tradeoffs, scaling, security..."
-                value={prompt}
-                onChange={(event) => setPrompt(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) submit();
-                }}
-              />
-            </div>
-
-            <div className="composer-action-row">
-              <AppTooltip label={settings.autoReview ? 'Currently proactive. Click for manual.' : 'Currently manual. Click for proactive.'}>
-                <button
-                  type="button"
-                  onClick={() => onSettingsChange({ ...settings, autoReview: !settings.autoReview })}
-                  className={`input-corner-toggle ${settings.autoReview ? 'proactive-button' : 'manual-button'}`}
-                  aria-label={settings.autoReview ? 'Switch to manual review' : 'Switch to proactive review'}
-                  disabled={isBusy}
-                >
-                  <Icon name={settings.autoReview ? 'zap' : 'user'} size={14} />
-                  <span>{settings.autoReview ? 'Proactive' : 'Manual'}</span>
-                </button>
-              </AppTooltip>
-              <button
-                className={`send-button unified-action-button input-action-button ${prompt.trim() ? 'send-mode' : 'review-mode'}`}
-                onClick={() => (prompt.trim() ? submit() : onReview())}
-                disabled={isBusy}
-                aria-label={prompt.trim() ? 'Send message' : 'Review diagram'}
-              >
-                <span className="action-icon-segment">
-                  <Icon name={prompt.trim() ? 'send' : 'sparkles'} size={15} />
-                </span>
-                <span>{isBusy ? 'Thinking' : prompt.trim() ? 'Send' : 'Review'}</span>
-              </button>
-            </div>
-          </footer>
-        </>
-      )}
-      {showOllamaSetup && (
-        <div className="credits-backdrop" role="presentation" onMouseDown={() => setShowOllamaSetup(false)}>
-          <section
-            className="credits-modal ollama-setup-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="ollama-setup-title"
-            onMouseDown={(event) => event.stopPropagation()}
-          >
+      <AppDialog
+        open={showOllamaSetup}
+        onOpenChange={setShowOllamaSetup}
+        className="credits-modal ollama-setup-modal"
+        labelledBy="ollama-setup-title"
+      >
             <header className="credits-modal-header">
               <div>
                 <p className="credits-kicker">Local Ollama</p>
-                <h2 id="ollama-setup-title">Set up a vision-supported model</h2>
+                <AppDialogTitle id="ollama-setup-title">Set up a vision-supported model</AppDialogTitle>
               </div>
               <button type="button" className="credits-close-button" onClick={() => setShowOllamaSetup(false)} aria-label="Close Ollama setup">
                 <Icon name="x" size={15} />
@@ -872,22 +499,17 @@ export function AssistantPanel({
                 </div>
               </div>
             </div>
-          </section>
-        </div>
-      )}
-      {showUsageLogsInfo && (
-        <div className="credits-backdrop" role="presentation" onMouseDown={() => setShowUsageLogsInfo(false)}>
-          <section
-            className="credits-modal usage-logs-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="usage-logs-title"
-            onMouseDown={(event) => event.stopPropagation()}
-          >
+      </AppDialog>
+      <AppDialog
+        open={showUsageLogsInfo}
+        onOpenChange={setShowUsageLogsInfo}
+        className="credits-modal usage-logs-modal"
+        labelledBy="usage-logs-title"
+      >
             <header className="credits-modal-header">
               <div>
                 <p className="credits-kicker">Privacy</p>
-                <h2 id="usage-logs-title">Anonymous usage logs</h2>
+                <AppDialogTitle id="usage-logs-title">Anonymous usage logs</AppDialogTitle>
               </div>
               <button type="button" className="credits-close-button" onClick={() => setShowUsageLogsInfo(false)} aria-label="Close usage logs information">
                 <Icon name="x" size={15} />
@@ -907,43 +529,31 @@ export function AssistantPanel({
                   </div>
                   <p>Leaving this enabled helps prioritize fixes without exposing private data.</p>
                 </div>
-                <button
-                  type="button"
-                  className="settings-switch"
-                  role="switch"
-                  aria-checked={settings.sendAnonymizedUsageLogs}
-                  aria-label="Send anonymized usage logs"
-                  data-state={settings.sendAnonymizedUsageLogs ? 'on' : 'off'}
-                  onClick={() =>
+                <AppSwitch
+                  checked={settings.sendAnonymizedUsageLogs}
+                  ariaLabel="Send anonymized usage logs"
+                  onCheckedChange={(checked) =>
                     onSettingsChange({
                       ...settings,
-                      sendAnonymizedUsageLogs: !settings.sendAnonymizedUsageLogs,
+                      sendAnonymizedUsageLogs: checked,
                     })
                   }
-                >
-                  <span className="settings-switch-thumb" />
-                </button>
+                />
               </div>
               {!settings.sendAnonymizedUsageLogs && (
                 <p className="usage-logs-opt-out-note">Usage logs are off. You can turn them back on anytime to help improve Archimedes.</p>
               )}
             </div>
-          </section>
-        </div>
-      )}
-      {showCredits && (
-        <div className="credits-backdrop" role="presentation" onMouseDown={() => setShowCredits(false)}>
-          <section
-            className="credits-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="credits-title"
-            onMouseDown={(event) => event.stopPropagation()}
-          >
+      </AppDialog>
+      <AppDialog
+        open={showCredits}
+        onOpenChange={setShowCredits}
+        labelledBy="credits-title"
+      >
             <header className="credits-modal-header">
               <div>
                 <p className="credits-kicker">Open source</p>
-                <h2 id="credits-title">Open source attributions</h2>
+                <AppDialogTitle id="credits-title">Open source attributions</AppDialogTitle>
               </div>
               <button type="button" className="credits-close-button" onClick={() => setShowCredits(false)} aria-label="Close open source attributions">
                 <Icon name="x" size={15} />
@@ -973,9 +583,7 @@ export function AssistantPanel({
                 ))}
               </div>
             </div>
-          </section>
-        </div>
-      )}
-    </aside>
+      </AppDialog>
+    </>
   );
 }
