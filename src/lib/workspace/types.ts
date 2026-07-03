@@ -62,6 +62,11 @@ export type WorkspaceOpenRootResult = {
   children: WorkspaceEntry[];
 };
 
+export type WorkspaceCreateDocumentResult = {
+  document: WorkspaceDocument;
+  entry: WorkspaceEntry;
+};
+
 export type WorkspaceDataProvider = {
   kind: WorkspaceProviderKind;
   capabilities: WorkspaceCapabilities;
@@ -69,6 +74,7 @@ export type WorkspaceDataProvider = {
   listChildren: (root: WorkspaceRoot, directoryId: WorkspaceFileId) => Promise<WorkspaceEntry[]>;
   readDocument: (entry: WorkspaceEntry) => Promise<WorkspaceDocument>;
   writeDocument: (document: WorkspaceDocument, snapshot: DiagramSnapshot) => Promise<void>;
+  createDocument?: (root: WorkspaceRoot, suggestedName: string, snapshot: DiagramSnapshot) => Promise<WorkspaceCreateDocumentResult>;
 };
 
 export type WorkspaceResourceIdentity = Pick<WorkspaceEntry | WorkspaceDocument | WorkspaceTab, 'providerKind' | 'rootId' | 'path'>;

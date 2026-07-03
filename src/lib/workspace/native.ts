@@ -51,6 +51,17 @@ function toEntry(dto: NativeWorkspaceEntryDto): WorkspaceEntry {
   };
 }
 
+function extensionFor(name: string) {
+  const match = name.match(/(\.excalidraw\.json|\.[^.]+)$/i);
+  return match?.[1];
+}
+
+function toExcalidrawFileName(name: string) {
+  const cleanName = name.trim().replace(/[/\\]/g, '-');
+  const baseName = cleanName || 'local-draft';
+  return isSupportedDiagramPath(baseName) ? baseName : `${baseName}.excalidraw`;
+}
+
 export class NativeWorkspaceProvider implements WorkspaceDataProvider {
   readonly kind = 'native' as const;
   readonly capabilities = {
@@ -115,6 +126,38 @@ export class NativeWorkspaceProvider implements WorkspaceDataProvider {
       rootId: document.rootId,
       content: serializeExcalidrawFile(snapshot),
     });
+  }
+
+  async createDocument(root: WorkspaceRoot, suggestedName: string, snapshot: DiagramSnapshot) {
+    const fileName = toExcalidrawFileName(suggestedName);
+    const path = `${root.path}/${fileName}`;
+    const id = `native://${path}` as WorkspaceEntry['id'];
+    const document: WorkspaceDocument = {
+      id,
+      providerKind: this.kind,
+      rootId: root.id,
+      title: fileName,
+      path,
+      snapshot,
+      isUntitled: false,
+      isSupported: true,
+    };
+    await this.writeDocument(document, snapshot);
+
+    return {
+      document,
+      entry: {
+        id,
+        rootId: root.id,
+        providerKind: this.kind,
+        kind: 'file' as const,
+        name: fileName,
+        path,
+        parentId: null,
+        extension: extensionFor(fileName),
+        isSupported: true,
+      },
+    };
   }
 }
 

@@ -54,7 +54,7 @@ export function WorkspaceExplorer() {
       )}
 
       <footer className="workspace-explorer-footer">
-        <button type="button" onClick={openUntitledTab}>Open untitled</button>
+        <button type="button" onClick={openUntitledTab}>New local draft</button>
       </footer>
     </aside>
   );

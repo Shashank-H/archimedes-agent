@@ -11,6 +11,8 @@ type WorkspaceTabsProps = {
 };
 
 function saveStateLabel(tab: WorkspaceTab) {
+  if (tab.isUntitled && tab.saveState === 'saved') return 'Saved locally';
+  if (tab.isUntitled && tab.saveState === 'dirty') return 'Unsaved local changes';
   if (tab.saveState === 'dirty') return 'Unsaved changes';
   if (tab.saveState === 'saving') return 'Saving…';
   if (tab.saveState === 'error') return 'Save error';

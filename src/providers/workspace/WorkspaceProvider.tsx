@@ -1,4 +1,4 @@
-import { useCallback, useRef, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, type ReactNode } from 'react';
 import type { WorkspaceEntry } from '../../lib/workspace/types';
 import type { ExcalidrawApi } from '../../types';
 import { GlobalShortcutsProvider } from '../shortcuts/GlobalShortcutsProvider';
@@ -11,7 +11,7 @@ function WorkspaceContextProvider({ children }: { children: ReactNode }) {
   const apiRef = useRef<ExcalidrawApi | null>(null);
   const { settings, handleSettingsChange } = useWorkspaceSettings();
   const tree = useWorkspaceTree();
-  const { openEntryAsTab } = useWorkspaceTabManager();
+  const { openEntryAsTab, setWorkspaceSaveTarget } = useWorkspaceTabManager();
 
   const setDiagramApi = useCallback((api: ExcalidrawApi) => {
     apiRef.current = api;
@@ -25,6 +25,16 @@ function WorkspaceContextProvider({ children }: { children: ReactNode }) {
     }
     await openEntryAsTab(entry);
   }, [openEntryAsTab, tree]);
+
+  useEffect(() => {
+    setWorkspaceSaveTarget({
+      root: tree.root,
+      onWorkspaceFileCreated: async (entry) => {
+        await tree.refreshWorkspaceRoot();
+        tree.setSelectedEntryId(entry.id);
+      },
+    });
+  }, [setWorkspaceSaveTarget, tree]);
 
   return (
     <WorkspaceContext.Provider

@@ -1779,7 +1779,8 @@ button.model-copy-button:hover:not(:disabled) {
 }
 .workspace-explorer-actions button,
 .workspace-explorer-footer button,
-.workspace-toolbar button {
+.workspace-toolbar button,
+.workspace-start-actions button {
   min-height: 28px;
   padding: 0 9px;
   font-size: 12px;
@@ -1994,7 +1995,8 @@ button.model-copy-button:hover:not(:disabled) {
   height: calc(100% - 32px);
   min-height: 0;
 }
-.unsupported-file-view {
+.unsupported-file-view,
+.workspace-start-view {
   height: 100%;
   display: grid;
   place-items: center;
@@ -2002,7 +2004,8 @@ button.model-copy-button:hover:not(:disabled) {
   color: var(--body);
   background: var(--canvas);
 }
-.unsupported-file-view > div {
+.unsupported-file-view > div,
+.workspace-start-view > div {
   max-width: 480px;
   padding: 24px;
   border: 1px solid var(--hairline);
@@ -2010,13 +2013,21 @@ button.model-copy-button:hover:not(:disabled) {
   background: var(--canvas-soft);
   box-shadow: var(--shadow-2);
 }
-.unsupported-file-view h2 {
+.unsupported-file-view h2,
+.workspace-start-view h2 {
   margin: 0 0 8px;
   color: var(--ink);
   font-size: 24px;
   line-height: 30px;
 }
-.unsupported-file-view p { margin: 0; }
+.unsupported-file-view p,
+.workspace-start-view p { margin: 0; }
+.workspace-start-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
 .theme-dark .workspace-explorer,
 .theme-dark .assistant-panel,
 .theme-dark .workspace-tabs,
@@ -2025,4 +2036,5 @@ button.model-copy-button:hover:not(:disabled) {
 .theme-dark .workspace-toolbar { background: rgba(23, 23, 23, 0.86); }
 .theme-dark .workspace-tab.is-active,
 .theme-dark .canvas-pane,
-.theme-dark .unsupported-file-view { background: #1f1f1f; }
+.theme-dark .unsupported-file-view,
+.theme-dark .workspace-start-view { background: #1f1f1f; }

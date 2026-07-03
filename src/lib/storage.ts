@@ -4,7 +4,16 @@ import { normalizeReviewDelayMs, normalizeReviewTimeoutMs } from './reviewTiming
 
 const SETTINGS_KEY = 'archimedes-agent.settings.v1';
 const SCENE_KEY = 'archimedes-agent.scene.v1';
+const LOCAL_DRAFTS_KEY = 'archimedes-agent.localDrafts.v1';
 const CHAT_KEY = 'archimedes-agent.chat.v1';
+
+export type LocalDraftRecord = {
+  id: string;
+  title: string;
+  path: string;
+  snapshot: DiagramSnapshot | null;
+  updatedAt: number;
+};
 const SIDEBAR_WIDTH_KEY = 'archimedes-agent.sidebarWidth.v1';
 
 export class AppStorage {
@@ -115,6 +124,28 @@ export class AppStorage {
 
   saveScene(snapshot: DiagramSnapshot) {
     this.writeJson(SCENE_KEY, snapshot);
+  }
+
+  loadLocalDrafts(): LocalDraftRecord[] {
+    const drafts = this.readJson<LocalDraftRecord[]>(LOCAL_DRAFTS_KEY, []);
+    return drafts.filter((draft) => draft.id && draft.title && draft.path);
+  }
+
+  loadLocalDraft(id: string): LocalDraftRecord | null {
+    return this.loadLocalDrafts().find((draft) => draft.id === id) ?? null;
+  }
+
+  saveLocalDraft(draft: LocalDraftRecord) {
+    const drafts = this.loadLocalDrafts();
+    const nextDraft = { ...draft, updatedAt: Date.now() };
+    const nextDrafts = drafts.some((candidate) => candidate.id === draft.id)
+      ? drafts.map((candidate) => (candidate.id === draft.id ? nextDraft : candidate))
+      : [...drafts, nextDraft];
+    this.writeJson(LOCAL_DRAFTS_KEY, nextDrafts);
+  }
+
+  deleteLocalDraft(id: string) {
+    this.writeJson(LOCAL_DRAFTS_KEY, this.loadLocalDrafts().filter((draft) => draft.id !== id));
   }
 
   loadChat(): ChatMessage[] {

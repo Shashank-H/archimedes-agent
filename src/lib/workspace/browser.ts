@@ -28,6 +28,12 @@ function extensionFor(name: string) {
   return match?.[1];
 }
 
+function toExcalidrawFileName(name: string) {
+  const cleanName = name.trim().replace(/[/\\]/g, '-');
+  const baseName = cleanName || 'local-draft';
+  return isSupportedDiagramPath(baseName) ? baseName : `${baseName}.excalidraw`;
+}
+
 async function ensureReadWritePermission(handle: StoredHandle) {
   const permissionHandle = handle as StoredHandle & {
     queryPermission?: (descriptor?: { mode?: 'read' | 'readwrite' }) => Promise<PermissionState>;
@@ -116,6 +122,47 @@ export class BrowserWorkspaceProvider implements WorkspaceDataProvider {
     const writable = await handle.createWritable();
     await writable.write(serializeExcalidrawFile(snapshot));
     await writable.close();
+  }
+
+  async createDocument(root: WorkspaceRoot, suggestedName: string, snapshot: DiagramSnapshot) {
+    const rootHandle = browserHandles.get(root.id);
+    if (!rootHandle || rootHandle.kind !== 'directory') throw new Error('Browser workspace folder is no longer available.');
+
+    await ensureReadWritePermission(rootHandle);
+
+    const fileName = toExcalidrawFileName(suggestedName);
+    const fileHandle = await rootHandle.getFileHandle(fileName, { create: true });
+    const path = fileName;
+    const id = `${root.id}/${path}` as WorkspaceFileId;
+    browserHandles.set(id, fileHandle);
+    browserHandlePaths.set(id, path);
+
+    const document: WorkspaceDocument = {
+      id,
+      providerKind: this.kind,
+      rootId: root.id,
+      title: fileName,
+      path,
+      snapshot,
+      isUntitled: false,
+      isSupported: true,
+    };
+    await this.writeDocument(document, snapshot);
+
+    return {
+      document,
+      entry: {
+        id,
+        rootId: root.id,
+        providerKind: this.kind,
+        kind: 'file' as const,
+        name: fileName,
+        path,
+        parentId: null,
+        extension: extensionFor(fileName),
+        isSupported: true,
+      },
+    };
   }
 
   private async readDirectory(

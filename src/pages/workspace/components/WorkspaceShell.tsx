@@ -10,7 +10,7 @@ import { WorkspaceTabs } from './WorkspaceTabs';
 import { useSidebarResize } from '../hooks/useSidebarResize';
 
 export function WorkspaceShell({ children }: { children: ReactNode }) {
-  const { settings, setDiagramApi } = useWorkspace();
+  const { settings, setDiagramApi, openWorkspaceRoot, isOpeningRoot } = useWorkspace();
   const {
     activeTab,
     activeTabId,
@@ -20,6 +20,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
     switchTab,
     closeTab,
     saveTab,
+    openUntitledTab,
   } = useWorkspaceTabManager();
   const { handleWorkspaceSnapshotChanged } = useChat();
   const { sidebarWidth, handleResizePointerDown, handleResizeKeyDown } = useSidebarResize();
@@ -70,7 +71,24 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
               }}
               onApiReady={setDiagramApi}
             />
-          ) : null}
+          ) : (
+            <div className="workspace-start-view">
+              <div>
+                <p className="workspace-eyebrow">No file open</p>
+                <h2>Open a diagram when you are ready.</h2>
+                <p>
+                  Open a folder to work with real .excalidraw files, or start a blank local draft that
+                  saves only in this browser and reopens after refresh.
+                </p>
+                <div className="workspace-start-actions">
+                  <button type="button" onClick={openWorkspaceRoot} disabled={isOpeningRoot}>
+                    {isOpeningRoot ? 'Opening…' : 'Open folder'}
+                  </button>
+                  <button type="button" onClick={openUntitledTab}>New local draft</button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </section>
       <SidebarResizer
