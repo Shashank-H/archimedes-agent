@@ -94,7 +94,7 @@ function createAbortError() {
 }
 
 function promptForWorkspaceFileName(suggestedName: string) {
-  const fileName = window.prompt('Save this local draft inside the opened workspace folder as:', suggestedName);
+  const fileName = window.prompt('Save this untitled diagram inside the opened workspace folder as:', suggestedName);
   if (!fileName) throw createAbortError();
   return fileName;
 }

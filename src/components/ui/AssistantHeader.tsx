@@ -24,7 +24,7 @@ export function AssistantHeader({ status, toggleAction, onToggleView }: Assistan
         </span>
         <div className="assistant-title-copy">
           <div className="assistant-heading-row">
-            <h1>Archimedes Agent</h1>
+            <h1>AI Agent</h1>
             <div className="assistant-header-actions">
               <AppTooltip label={toggleAction.tooltipLabel}>
                 <button

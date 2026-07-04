@@ -128,7 +128,18 @@ export class AppStorage {
 
   loadLocalDrafts(): LocalDraftRecord[] {
     const drafts = this.readJson<LocalDraftRecord[]>(LOCAL_DRAFTS_KEY, []);
-    return drafts.filter((draft) => draft.id && draft.title && draft.path);
+    return drafts
+      .filter((draft) => draft.id && draft.title && draft.path)
+      .map((draft) => {
+        const legacyMatch = /^Local draft(?: (\d+))?$/.exec(draft.title);
+        if (!legacyMatch) return draft;
+
+        const index = Number(legacyMatch[1] ?? 1);
+        return {
+          ...draft,
+          title: index <= 1 ? 'Untitled' : `Untitled ${index}`,
+        };
+      });
   }
 
   loadLocalDraft(id: string): LocalDraftRecord | null {

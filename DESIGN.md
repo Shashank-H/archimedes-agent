@@ -734,3 +734,17 @@ The brand uses STACKED shadows — multiple small offsets layered to fake natura
 - Don't promote the geometric sans to weight 700. The brand's display ceiling is 600.
 - Don't pair the marketing 100-px pill CTA shape with the 6-px nav radius on the same screen — pick a scale and stay there.
 - Don't set body paragraphs in the mono face. The mono is for code + technical labels only.
+
+## Archimedes workspace shell additions
+
+The VS Code-inspired workspace shell should stay aligned with the existing Archimedes design language instead of copying VS Code literally.
+
+Workspace shell rules:
+
+- Use hairline borders for shell separation: top bar, activity rail, explorer, tabs, assistant divider, and bottom status bar.
+- Keep row heights compact and editor-like: explorer rows around 24px, tabs around 32px, status bar around 24px, and top bar around 40px.
+- Use Geist for primary UI text and Geist Mono for workspace labels, status metadata, breadcrumbs, and compact technical captions.
+- Support both dark and light themes for the complete shell, including explorer rows, activity rail, top bar, status bar, and empty/error states.
+- Prefer subtle active/hover states: low-contrast backgrounds, small left active indicators, dirty dots, and restrained color accents.
+- Avoid heavy shadows around the canvas so the Excalidraw editor remains the visual focus.
+

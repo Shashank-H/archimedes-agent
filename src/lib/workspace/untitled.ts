@@ -13,12 +13,12 @@ const UNTITLED_ROOT_ID = 'untitled://local/root' as const;
 export const UNTITLED_DOCUMENT_ID = 'untitled://local/default' as const;
 
 function getDraftTitle(index: number) {
-  return `Local draft ${index}`;
+  return index <= 1 ? 'Untitled' : `Untitled ${index}`;
 }
 
 function toExcalidrawFileName(title: string) {
   const cleanTitle = title.trim().replace(/[^a-z0-9-_ .]/gi, '-').replace(/-+/g, '-');
-  const baseName = cleanTitle || 'local-draft';
+  const baseName = cleanTitle || 'untitled';
   return baseName.toLowerCase().endsWith('.excalidraw') ? baseName : `${baseName}.excalidraw`;
 }
 
@@ -122,8 +122,8 @@ export class UntitledWorkspaceProvider implements WorkspaceDataProvider {
     return {
       id: UNTITLED_ROOT_ID,
       providerKind: this.kind,
-      name: 'Local diagrams',
-      path: 'Local diagrams',
+      name: 'Untitled',
+      path: 'Untitled diagrams',
     };
   }
 
