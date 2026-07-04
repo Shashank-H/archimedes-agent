@@ -1,4 +1,5 @@
 import { AppTooltip } from '../AppTooltip';
+import assistantHeaderStyles from './AssistantHeader.module.css';
 import { Icon, type IconName } from './icons';
 
 type AssistantHeaderToggleAction = {
@@ -16,7 +17,7 @@ type AssistantHeaderProps = {
 
 export function AssistantHeader({ status, toggleAction, onToggleView }: AssistantHeaderProps) {
   return (
-    <header className="assistant-header">
+    <header className={`assistant-header ${assistantHeaderStyles.moduleAnchor}`}>
       <div className="assistant-title">
         <span className="assistant-mark">
           <img className="logo-light" src="/logos/logo-light.svg" alt="" aria-hidden="true" />

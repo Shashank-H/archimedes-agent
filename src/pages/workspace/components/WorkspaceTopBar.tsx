@@ -3,6 +3,7 @@ import type { AppSettings } from '../../../types';
 import type { WorkspaceRoot, WorkspaceTab } from '../../../lib/workspace/types';
 import { workspaceProviderFactory } from '../../../lib/workspace/factory';
 import { getWorkspacePlatformActions, getWorkspaceRuntime } from '../../../lib/workspace/platformActions';
+import { canSaveWorkspaceTab } from '../../../providers/workspace/tabs/WorkspaceTabManagerContext';
 
 type WorkspaceTopBarProps = {
   root: WorkspaceRoot | null;
@@ -29,7 +30,7 @@ function saveStateText(activeTab: WorkspaceTab | null) {
   if (!activeTab.isSupported) return `Viewing unsupported file: ${activeTab.title}`;
   if (activeTab.saveState === 'dirty') return `Unsaved changes in ${activeTab.title}`;
   if (activeTab.saveState === 'saving') return `Saving ${activeTab.title}…`;
-  if (activeTab.saveState === 'error') return `Save failed for ${activeTab.title}`;
+  if (activeTab.saveState === 'error') return activeTab.error ?? `Save failed for ${activeTab.title}`;
   return `Editing ${activeTab.title}`;
 }
 
@@ -60,7 +61,7 @@ export function WorkspaceTopBar({
 }: WorkspaceTopBarProps) {
   const runtime = getWorkspaceRuntime();
   const capabilities = workspaceProviderFactory.getProvider(root?.providerKind ?? workspaceProviderFactory.getDefaultProvider().kind).capabilities;
-  const canSave = Boolean(activeTab?.isSupported && activeTab.loadState === 'loaded' && activeTab.saveState !== 'saving');
+  const canSave = canSaveWorkspaceTab(activeTab);
   const canReview = Boolean(activeTab?.isSupported && activeTab.loadState === 'loaded');
   const actions = getWorkspacePlatformActions({
     runtime,

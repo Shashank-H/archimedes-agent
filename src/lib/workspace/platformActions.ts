@@ -52,6 +52,7 @@ export function getWorkspacePlatformActions({
 }: WorkspacePlatformActionInput): WorkspacePlatformActionDescriptor[] {
   const canOpenDirectory = capabilities?.canOpenDirectory ?? true;
   const canRefresh = capabilities?.canRefresh ?? hasRoot;
+  const canSaveActiveDocument = canSave && (saveState === 'dirty' || saveState === 'error');
 
   return [
     {
@@ -83,11 +84,11 @@ export function getWorkspacePlatformActions({
     },
     {
       id: 'save',
-      label: saveState === 'saving' ? 'Saving…' : 'Save diagram',
-      shortLabel: saveState === 'saving' ? 'Saving' : 'Save',
-      ariaLabel: 'Save active diagram',
-      title: 'Save active diagram (Ctrl+S)',
-      enabled: canSave,
+      label: saveState === 'saving' ? 'Saving…' : canSaveActiveDocument && saveState === 'error' ? 'Retry save diagram' : 'Save diagram',
+      shortLabel: saveState === 'saving' ? 'Saving' : canSaveActiveDocument && saveState === 'error' ? 'Retry' : 'Save',
+      ariaLabel: canSaveActiveDocument && saveState === 'error' ? 'Retry saving the active diagram' : 'Save active diagram',
+      title: saveState === 'saved' ? 'Active diagram is already saved' : 'Save active diagram (Ctrl+S)',
+      enabled: canSaveActiveDocument,
       visible: true,
     },
     {
