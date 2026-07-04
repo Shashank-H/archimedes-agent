@@ -1,4 +1,4 @@
-import type { ComponentType } from 'react';
+import { useEffect, type ComponentType } from 'react';
 import { AssistantHeader } from '../components/ui/AssistantHeader';
 import { ChatPage } from '../pages/chat/ChatPage';
 import { SettingsPage } from '../pages/settings/SettingsPage';
@@ -13,8 +13,21 @@ const ASSISTANT_PANE_COMPONENT_BY_VIEW: Record<AssistantPaneView, ComponentType>
 
 export function AssistantPaneRouter() {
   const { status } = useChat();
-  const { activeView, toggleTargetViewDefinition, toggleView } = useAssistantPaneNavigation();
+  const { activeView, toggleTargetViewDefinition, toggleView, openView } = useAssistantPaneNavigation();
   const ActivePaneComponent = ASSISTANT_PANE_COMPONENT_BY_VIEW[activeView];
+
+  useEffect(() => {
+    const openSettings = () => openView(ASSISTANT_PANE_VIEW_IDS.settings);
+    const openChat = () => openView(ASSISTANT_PANE_VIEW_IDS.chat);
+
+    window.addEventListener('archimedes:open-settings', openSettings);
+    window.addEventListener('archimedes:open-chat', openChat);
+
+    return () => {
+      window.removeEventListener('archimedes:open-settings', openSettings);
+      window.removeEventListener('archimedes:open-chat', openChat);
+    };
+  }, [openView]);
 
   return (
     <>

@@ -1,6 +1,7 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { appStorage } from '../../../lib/storage';
 import { workspaceProviderFactory } from '../../../lib/workspace/factory';
-import type { WorkspaceEntry, WorkspaceFileId, WorkspaceRoot } from '../../../lib/workspace/types';
+import type { WorkspaceEntry, WorkspaceFileId, WorkspaceOpenRootResult, WorkspaceRoot, WorkspaceRootId } from '../../../lib/workspace/types';
 
 function toErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
@@ -14,21 +15,69 @@ export function useWorkspaceTree() {
   const [isOpeningRoot, setIsOpeningRoot] = useState(false);
   const [treeError, setTreeError] = useState<string | null>(null);
 
+  const applyRootResult = useCallback((result: WorkspaceOpenRootResult) => {
+    setRoot(result.root);
+    setEntriesByParentId({ [result.root.id]: result.children });
+    setExpandedEntryIds(new Set([result.root.id]));
+    setSelectedEntryId(null);
+  }, []);
+
+  useEffect(() => {
+    const storedRoot = appStorage.loadWorkspaceRoot();
+    if (!storedRoot) return;
+
+    const storedProviderKind = storedRoot.providerKind;
+    const storedPath = storedRoot.path;
+    const pathSegments = storedPath.split(/[\\/]/).filter(Boolean);
+    const storedName = pathSegments.length > 0 ? pathSegments[pathSegments.length - 1] : storedPath;
+    let didCancel = false;
+
+    async function restoreWorkspaceRoot() {
+      setIsOpeningRoot(true);
+      setTreeError(null);
+      try {
+        const provider = workspaceProviderFactory.getProvider(storedProviderKind);
+        if (!provider.restoreRoot) throw new Error('This workspace provider cannot restore folders.');
+        const result = await provider.restoreRoot({
+          id: `${storedProviderKind}://${storedPath}` as WorkspaceRootId,
+          providerKind: storedProviderKind,
+          name: storedName,
+          path: storedPath,
+        });
+        if (didCancel) return;
+        applyRootResult(result);
+      } catch (error) {
+        if (didCancel) return;
+        appStorage.deleteWorkspaceRoot();
+        setTreeError(`Could not restore the previous workspace folder: ${toErrorMessage(error)}`);
+      } finally {
+        if (!didCancel) setIsOpeningRoot(false);
+      }
+    }
+
+    void restoreWorkspaceRoot();
+
+    return () => {
+      didCancel = true;
+    };
+  }, [applyRootResult]);
+
   const openWorkspaceRoot = useCallback(async () => {
     setIsOpeningRoot(true);
     setTreeError(null);
     try {
       const provider = workspaceProviderFactory.getDefaultProvider();
       const result = await provider.openRoot();
-      setRoot(result.root);
-      setEntriesByParentId({ [result.root.id]: result.children });
-      setExpandedEntryIds(new Set([result.root.id]));
+      applyRootResult(result);
+      if (result.root.providerKind === 'native' || result.root.providerKind === 'browser') {
+        appStorage.saveWorkspaceRoot({ providerKind: result.root.providerKind, path: result.root.path });
+      }
     } catch (error) {
       setTreeError(toErrorMessage(error));
     } finally {
       setIsOpeningRoot(false);
     }
-  }, []);
+  }, [applyRootResult]);
 
   const refreshWorkspaceRoot = useCallback(async () => {
     if (!root) return;

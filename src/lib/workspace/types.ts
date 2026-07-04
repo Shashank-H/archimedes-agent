@@ -71,6 +71,7 @@ export type WorkspaceDataProvider = {
   kind: WorkspaceProviderKind;
   capabilities: WorkspaceCapabilities;
   openRoot: () => Promise<WorkspaceOpenRootResult>;
+  restoreRoot?: (root: WorkspaceRoot) => Promise<WorkspaceOpenRootResult>;
   listChildren: (root: WorkspaceRoot, directoryId: WorkspaceFileId) => Promise<WorkspaceEntry[]>;
   readDocument: (entry: WorkspaceEntry) => Promise<WorkspaceDocument>;
   writeDocument: (document: WorkspaceDocument, snapshot: DiagramSnapshot) => Promise<void>;
