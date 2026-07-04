@@ -10,6 +10,8 @@
 - Move request orchestration, settings decisions, derived state, side effects, and testable workflows into hooks rather than embedding them directly in component files.
 - Design hooks with focused inputs/outputs so they are easier to unit test independently from the rendered component.
 - Keep constants, enum-like values, reusable copy, option lists, and static instruction templates in nearby `constants.ts` files; keep pure formatting/detection helpers in `utils.ts` files.
+- Avoid scattering hardcoded data, strings, route/view names, options, or mode mappings directly through components/hooks; model them as typed objects, constants, enums, lookup maps, or other extendable structures that make future additions localized and low-risk.
+- Do not create bespoke or band-aid implementations just to satisfy the current two-case UI; prefer generic configuration-driven flows, derived state, and reusable actions so adding another view/mode/option does not require duplicating functions or branching throughout the code.
 - Do not duplicate reusable UI primitives such as cards, accordions, dialogs, switches, headers, or icon wrappers across pages; extract shared or feature-local components instead.
 - For routed workspace-style UIs, keep the persistent workspace/shell outside the router when panes should be independently controlled; route only the pane content that actually changes.
 - Prefer `MemoryRouter` for internal pane navigation that should not affect browser/history URLs.
@@ -17,6 +19,10 @@
 - For Radix portals, ensure app theme variables are available globally (for example on `document.documentElement`) rather than passing theme props through low-level dialog/popover components.
 - When wrapping Radix primitives, style against Radix state attributes such as `data-state="checked"`/`unchecked` and preserve app-specific styling through shared wrappers.
 - Links styled as buttons/actions must explicitly define normal, visited, hover, and active colors to avoid browser link-state color drift.
+- Split CSS by ownership instead of continuously adding to a monolithic stylesheet: shared primitives may live in global/shared CSS, while page/feature/component-specific styles should live in nearby CSS files imported by their owner.
+- When CSS for a feature grows beyond a small localized tweak or introduces a reusable component, create a dedicated stylesheet/module for that feature/component and keep selectors scoped by a clear namespace.
+- Do not add new large sections to `styles.css` unless they are truly global tokens, resets, or cross-app primitives; prefer incremental migration toward smaller maintainable CSS files when touching existing feature styles.
+- Always use theme tokens/CSS variables for colors in UI styles. Do not introduce hardcoded hex/rgb/rgba colors in component or feature CSS unless defining/updating the theme tokens themselves.
 
 ## Architecture rules
 

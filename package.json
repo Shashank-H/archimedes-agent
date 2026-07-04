@@ -21,7 +21,7 @@
     "posthog-js": "^1.395.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-router-dom": "^7.18.0"
+    "react-hotkeys-hook": "^5.3.3"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.8.0",

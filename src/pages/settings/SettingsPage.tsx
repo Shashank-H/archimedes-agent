@@ -1,9 +1,9 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { AssistantHeader } from '../../components/ui/AssistantHeader';
 import { AppDialog, AppDialogTitle } from '../../components/ui/AppDialog';
 import { AppSwitch } from '../../components/ui/AppSwitch';
 import { Icon } from '../../components/ui/icons';
 import { useChat } from '../../providers/chat/ChatContext';
+import { KEYBOARD_SHORTCUTS } from '../../providers/shortcuts/constants';
 import { useWorkspace } from '../../providers/workspace/WorkspaceContext';
 import { AppTooltip } from '../../components/AppTooltip';
 import { CustomSelect } from '../../components/CustomSelect';
@@ -22,7 +22,6 @@ export function SettingsPage() {
   const { settings, handleSettingsChange: onSettingsChange } = useWorkspace();
   const {
     isBusy,
-    status,
     currentModelValidationError: modelValidationError,
     handleTestConnection: onTestConnection,
   } = useChat();
@@ -32,6 +31,7 @@ export function SettingsPage() {
   const [showUsageLogsInfo, setShowUsageLogsInfo] = useState(false);
   const [providerConfigOpen, setProviderConfigOpen] = useState(!providerConfigurationIsTested);
   const [reviewTimingOpen, setReviewTimingOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [showOllamaSetup, setShowOllamaSetup] = useState(false);
   const [copiedCommand, setCopiedCommand] = useState<string | null>(null);
   const modelListboxId = useId();
@@ -118,9 +118,7 @@ export function SettingsPage() {
 
   return (
     <>
-      <AssistantHeader status={status} />
-
-        <section className="settings-section">
+      <section className="settings-section">
           <SettingsAccordion
             open={providerConfigOpen}
             onOpenChange={setProviderConfigOpen}
@@ -309,6 +307,27 @@ export function SettingsPage() {
                   </button>
                 </div>
               </div>
+          </SettingsAccordion>
+          <SettingsAccordion
+            open={shortcutsOpen}
+            onOpenChange={setShortcutsOpen}
+            title="Keyboard shortcuts"
+            summary={`${KEYBOARD_SHORTCUTS.length} active shortcut${KEYBOARD_SHORTCUTS.length === 1 ? '' : 's'}`}
+          >
+            <div className="settings-shortcuts-list">
+              {KEYBOARD_SHORTCUTS.map((shortcut) => (
+                <div key={shortcut.id} className="settings-shortcut-row">
+                  <div>
+                    <strong>{shortcut.label}</strong>
+                    <span>{shortcut.description}</span>
+                    <small>{shortcut.scopeLabel}</small>
+                  </div>
+                  <div className="settings-shortcut-keys" aria-label={shortcut.displayKeys.join(' plus ')}>
+                    {shortcut.displayKeys.map((key) => <kbd key={key}>{key}</kbd>)}
+                  </div>
+                </div>
+              ))}
+            </div>
           </SettingsAccordion>
           <div className="settings-option-card">
             <span className="settings-option-icon" aria-hidden="true">

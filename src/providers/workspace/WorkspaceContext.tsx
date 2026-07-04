@@ -1,14 +1,25 @@
-import { createContext, useContext, type RefObject } from 'react';
-import type { AppSettings, DiagramSnapshot, ExcalidrawApi } from '../../types';
+import { createContext, useContext } from 'react';
+import type {
+  WorkspaceEntry,
+  WorkspaceFileId,
+  WorkspaceRoot,
+} from '../../lib/workspace/types';
+import type { AppSettings, ExcalidrawApi } from '../../types';
 
 export type WorkspaceContextValue = {
-  initialSnapshot: DiagramSnapshot | null;
   settings: AppSettings;
+  root: WorkspaceRoot | null;
+  entriesByParentId: Record<string, WorkspaceEntry[]>;
+  expandedEntryIds: Set<WorkspaceFileId>;
+  selectedEntryId: WorkspaceFileId | null;
+  isOpeningRoot: boolean;
+  treeError: string | null;
   setDiagramApi: (api: ExcalidrawApi) => void;
-  getCurrentSnapshot: () => DiagramSnapshot | null;
-  snapshotRef: RefObject<DiagramSnapshot | null>;
-  handleSnapshotChange: (snapshot: DiagramSnapshot) => void;
   handleSettingsChange: (settings: AppSettings) => void;
+  openWorkspaceRoot: () => Promise<void>;
+  refreshWorkspaceRoot: () => Promise<void>;
+  toggleDirectory: (entry: WorkspaceEntry) => Promise<void>;
+  selectEntry: (entry: WorkspaceEntry) => Promise<void>;
 };
 
 export const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
