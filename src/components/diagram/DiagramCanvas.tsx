@@ -48,6 +48,9 @@ export function DiagramCanvas({ documentKey, initialSnapshot, theme, onSnapshotC
         onChange={(elements: readonly ExcalidrawElement[], appState: AppState, files: BinaryFiles) => {
           onSnapshotChange({
             elements,
+            // Persist only document-level app state. View-only changes such as
+            // zoom and pan are dropped so they do not mark tabs dirty or
+            // trigger proactive reviews.
             appState: createPersistentAppState(appState),
             files,
             updatedAt: Date.now(),

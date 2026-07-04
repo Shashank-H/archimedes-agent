@@ -19,8 +19,47 @@ const browserHandles = new Map<string, StoredHandle>();
 const browserHandlePaths = new Map<string, string>();
 let rootCounter = 0;
 
+const BROWSER_WORKSPACE_DB_NAME = 'archimedes-agent.workspaceHandles.v1';
+const BROWSER_WORKSPACE_STORE_NAME = 'handles';
+const BROWSER_WORKSPACE_ROOT_KEY = 'root';
+
+function openBrowserWorkspaceHandleDatabase() {
+  return new Promise<IDBDatabase>((resolve, reject) => {
+    const request = indexedDB.open(BROWSER_WORKSPACE_DB_NAME, 1);
+
+    request.onupgradeneeded = () => {
+      request.result.createObjectStore(BROWSER_WORKSPACE_STORE_NAME);
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error ?? new Error('Could not open browser workspace handle storage.'));
+  });
+}
+
+async function saveBrowserWorkspaceRootHandle(handle: DirectoryHandle) {
+  const database = await openBrowserWorkspaceHandleDatabase();
+  await new Promise<void>((resolve, reject) => {
+    const transaction = database.transaction(BROWSER_WORKSPACE_STORE_NAME, 'readwrite');
+    transaction.objectStore(BROWSER_WORKSPACE_STORE_NAME).put(handle, BROWSER_WORKSPACE_ROOT_KEY);
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error ?? new Error('Could not save browser workspace folder.'));
+  });
+  database.close();
+}
+
+async function loadBrowserWorkspaceRootHandle() {
+  const database = await openBrowserWorkspaceHandleDatabase();
+  const handle = await new Promise<DirectoryHandle | null>((resolve, reject) => {
+    const transaction = database.transaction(BROWSER_WORKSPACE_STORE_NAME, 'readonly');
+    const request = transaction.objectStore(BROWSER_WORKSPACE_STORE_NAME).get(BROWSER_WORKSPACE_ROOT_KEY);
+    request.onsuccess = () => resolve((request.result as DirectoryHandle | undefined) ?? null);
+    request.onerror = () => reject(request.error ?? new Error('Could not load browser workspace folder.'));
+  });
+  database.close();
+  return handle;
+}
+
 function hasFileSystemAccessApi() {
-  return typeof window !== 'undefined' && 'showDirectoryPicker' in window;
+  return typeof window !== 'undefined' && 'showDirectoryPicker' in window && typeof indexedDB !== 'undefined';
 }
 
 function extensionFor(name: string) {
@@ -63,18 +102,18 @@ export class BrowserWorkspaceProvider implements WorkspaceDataProvider {
       showDirectoryPicker: (options?: { mode?: 'read' | 'readwrite' }) => Promise<DirectoryHandle>;
     }).showDirectoryPicker;
     const handle = await picker({ mode: 'readwrite' });
-    const rootId = `browser://workspace-${++rootCounter}` as const;
-    browserHandles.set(rootId, handle);
-    browserHandlePaths.set(rootId, handle.name);
+    await saveBrowserWorkspaceRootHandle(handle);
+    return this.openRootFromHandle(handle);
+  }
 
-    const root: WorkspaceRoot = {
-      id: rootId,
-      providerKind: this.kind,
-      name: handle.name,
-      path: handle.name,
-    };
+  async restoreRoot(): Promise<WorkspaceOpenRootResult> {
+    if (!hasFileSystemAccessApi()) throw new Error('This browser does not support folder workspaces.');
 
-    return { root, children: await this.readDirectory(root, handle, null, handle.name) };
+    const handle = await loadBrowserWorkspaceRootHandle();
+    if (!handle) throw new Error('No browser workspace folder was saved.');
+
+    await ensureReadWritePermission(handle);
+    return this.openRootFromHandle(handle);
   }
 
   async listChildren(root: WorkspaceRoot, directoryId: WorkspaceFileId): Promise<WorkspaceEntry[]> {
@@ -163,6 +202,21 @@ export class BrowserWorkspaceProvider implements WorkspaceDataProvider {
         isSupported: true,
       },
     };
+  }
+
+  private async openRootFromHandle(handle: DirectoryHandle) {
+    const rootId = `browser://workspace-${++rootCounter}` as const;
+    browserHandles.set(rootId, handle);
+    browserHandlePaths.set(rootId, handle.name);
+
+    const root: WorkspaceRoot = {
+      id: rootId,
+      providerKind: this.kind,
+      name: handle.name,
+      path: handle.name,
+    };
+
+    return { root, children: await this.readDirectory(root, handle, null, handle.name) };
   }
 
   private async readDirectory(

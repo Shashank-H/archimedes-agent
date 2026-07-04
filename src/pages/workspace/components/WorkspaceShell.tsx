@@ -22,10 +22,15 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
     activeTab,
     activeTabId,
     activeSnapshot,
+    activeDocumentKey,
     tabs,
     handleSnapshotChange,
     switchTab,
     closeTab,
+    closeActiveTab,
+    closeSavedTabs,
+    closeAllTabs,
+    clearActiveCanvasContents,
     saveTab,
     openUntitledTab,
   } = useWorkspaceTabManager();
@@ -90,6 +95,15 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
             onSwitchTab={switchTab}
             onCloseTab={closeTab}
             onSaveTab={saveTab}
+            onSaveActiveTab={() => {
+              if (activeTabId) return saveTab(activeTabId);
+              return undefined;
+            }}
+            onCloseActiveTab={closeActiveTab}
+            onCloseSavedTabs={closeSavedTabs}
+            onCloseAllTabs={closeAllTabs}
+            onClearActiveCanvas={clearActiveCanvasContents}
+            onOpenUntitledTab={openUntitledTab}
           />
           <div className="workspace-editor-body">
             {activeTab?.loadState === 'error' ? (
@@ -112,8 +126,8 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
               <UnsupportedFileView tab={activeTab} />
             ) : activeTab ? (
               <DiagramCanvas
-                key={activeTab.id}
-                documentKey={activeTab.id}
+                key={activeDocumentKey ?? activeTab.id}
+                documentKey={activeDocumentKey ?? activeTab.id}
                 initialSnapshot={activeSnapshot}
                 theme={settings.theme}
                 onSnapshotChange={(snapshot) => {

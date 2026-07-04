@@ -6,6 +6,7 @@ const SETTINGS_KEY = 'archimedes-agent.settings.v1';
 const SCENE_KEY = 'archimedes-agent.scene.v1';
 const LOCAL_DRAFTS_KEY = 'archimedes-agent.localDrafts.v1';
 const CHAT_KEY = 'archimedes-agent.chat.v1';
+const WORKSPACE_ROOT_KEY = 'archimedes-agent.workspaceRoot.v1';
 
 export type LocalDraftRecord = {
   id: string;
@@ -13,6 +14,11 @@ export type LocalDraftRecord = {
   path: string;
   snapshot: DiagramSnapshot | null;
   updatedAt: number;
+};
+
+export type StoredWorkspaceRoot = {
+  providerKind: 'native' | 'browser';
+  path: string;
 };
 const SIDEBAR_WIDTH_KEY = 'archimedes-agent.sidebarWidth.v1';
 
@@ -157,6 +163,20 @@ export class AppStorage {
 
   deleteLocalDraft(id: string) {
     this.writeJson(LOCAL_DRAFTS_KEY, this.loadLocalDrafts().filter((draft) => draft.id !== id));
+  }
+
+  loadWorkspaceRoot(): StoredWorkspaceRoot | null {
+    const root = this.readJson<StoredWorkspaceRoot | null>(WORKSPACE_ROOT_KEY, null);
+    if (!root || (root.providerKind !== 'native' && root.providerKind !== 'browser') || !root.path) return null;
+    return root;
+  }
+
+  saveWorkspaceRoot(root: StoredWorkspaceRoot) {
+    this.writeJson(WORKSPACE_ROOT_KEY, root);
+  }
+
+  deleteWorkspaceRoot() {
+    localStorage.removeItem(WORKSPACE_ROOT_KEY);
   }
 
   loadChat(): ChatMessage[] {

@@ -25,6 +25,8 @@ import type { DiagramSnapshot } from '../../../types';
 type WorkspaceDocumentRecord = {
   snapshot: DiagramSnapshot | null;
   savedFingerprint: string | null;
+  renderVersion: number;
+  hasReceivedCanvasChange: boolean;
 };
 
 type WorkspaceSaveTarget = {
@@ -37,6 +39,7 @@ type WorkspaceTabManagerContextValue = {
   activeTab: WorkspaceTab | null;
   activeTabId: WorkspaceFileId | null;
   activeSnapshot: DiagramSnapshot | null;
+  activeDocumentKey: string | null;
   snapshotRef: RefObject<DiagramSnapshot | null>;
   getCurrentSnapshot: () => DiagramSnapshot | null;
   handleSnapshotChange: (tabId: WorkspaceFileId, snapshot: DiagramSnapshot) => boolean;
@@ -44,6 +47,10 @@ type WorkspaceTabManagerContextValue = {
   openUntitledTab: () => void;
   switchTab: (tabId: WorkspaceFileId) => void;
   closeTab: (tabId: WorkspaceFileId) => void;
+  closeActiveTab: () => void;
+  closeSavedTabs: () => void;
+  closeAllTabs: () => void;
+  clearActiveCanvasContents: () => void;
   saveTab: (tabId: WorkspaceFileId) => Promise<void>;
   saveActiveTab: () => Promise<void>;
   setWorkspaceSaveTarget: (target: WorkspaceSaveTarget) => void;
@@ -107,11 +114,47 @@ function createDocumentRecord(snapshot: DiagramSnapshot | null): WorkspaceDocume
   return {
     snapshot,
     savedFingerprint: createSnapshotFingerprint(snapshot),
+    renderVersion: 0,
+    hasReceivedCanvasChange: false,
+  };
+}
+
+const EMPTY_DIAGRAM_SAVE_MESSAGE = 'You cannot save an empty diagram.';
+
+export function canSaveWorkspaceTab(tab: WorkspaceTab | null | undefined) {
+  return Boolean(
+    tab?.isSupported
+      && tab.loadState === 'loaded'
+      && (tab.saveState === 'dirty' || (tab.saveState === 'error' && tab.error !== EMPTY_DIAGRAM_SAVE_MESSAGE)),
+  );
+}
+
+function hasUnsavedWorkspaceTabChanges(tab: WorkspaceTab | null | undefined) {
+  return tab?.saveState === 'dirty' || tab?.saveState === 'error';
+}
+
+function createClearedSnapshot(snapshot: DiagramSnapshot | null): DiagramSnapshot {
+  return {
+    elements: [],
+    appState: snapshot?.appState ?? {},
+    files: {},
+    updatedAt: Date.now(),
   };
 }
 
 function resolveSnapshotSaveState(snapshot: DiagramSnapshot | null, savedFingerprint: string | null): WorkspaceSaveState {
   return createSnapshotFingerprint(snapshot) === savedFingerprint ? 'saved' : 'dirty';
+}
+
+function isEmptyDiagramSnapshot(snapshot: DiagramSnapshot | null | undefined) {
+  if (!snapshot) return true;
+
+  const visibleElements = snapshot.elements.filter((element) => !('isDeleted' in element) || !element.isDeleted);
+  return visibleElements.length === 0 && Object.keys(snapshot.files ?? {}).length === 0;
+}
+
+function getEmptyUntitledSaveMessage() {
+  return EMPTY_DIAGRAM_SAVE_MESSAGE;
 }
 
 const WorkspaceTabManagerContext = createContext<WorkspaceTabManagerContextValue | null>(null);
@@ -123,6 +166,7 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
     initialLocalDrafts.map((draft) => [draft.id as WorkspaceFileId, createDocumentRecord(draft.snapshot)]),
   ));
   const [tabs, setTabs] = useState<WorkspaceTab[]>(initialLocalDraftTabs);
+  const [, setDocumentVersionBump] = useState(0);
   const tabsRef = useRef<WorkspaceTab[]>(tabs);
   tabsRef.current = tabs;
   const initialActiveTabId = initialLocalDraftTabs[0]?.id ?? null;
@@ -135,7 +179,9 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
   });
 
   const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? tabs[0] ?? null;
-  const activeSnapshot = activeTab ? documentRecordByTabIdRef.current.get(activeTab.id)?.snapshot ?? null : null;
+  const activeRecord = activeTab ? documentRecordByTabIdRef.current.get(activeTab.id) ?? null : null;
+  const activeSnapshot = activeRecord?.snapshot ?? null;
+  const activeDocumentKey = activeTab ? `${activeTab.id}:${activeRecord?.renderVersion ?? 0}` : null;
   const snapshotRef = useRef<DiagramSnapshot | null>(activeSnapshot);
   snapshotRef.current = activeSnapshot;
 
@@ -163,6 +209,7 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
         return {
           ...tab,
           saveState,
+          error: saveState === 'error' ? tab.error : null,
         };
       });
 
@@ -170,18 +217,53 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
     });
   }, []);
 
+  const setTabSaveError = useCallback((tabId: WorkspaceFileId, message: string) => {
+    setTabs((currentTabs) =>
+      currentTabs.map((tab) =>
+        tab.id === tabId
+          ? { ...tab, saveState: 'error', error: message }
+          : tab,
+      ),
+    );
+  }, []);
+
   const handleSnapshotChange = useCallback((tabId: WorkspaceFileId, snapshot: DiagramSnapshot) => {
     const currentRecord = documentRecordByTabIdRef.current.get(tabId);
-    if (!currentRecord || !tabsRef.current.some((tab) => tab.id === tabId)) return false;
+    const currentTab = tabsRef.current.find((tab) => tab.id === tabId);
+    if (!currentRecord || !currentTab) return false;
 
     const currentFingerprint = createSnapshotFingerprint(currentRecord.snapshot);
     const nextFingerprint = createSnapshotFingerprint(snapshot);
 
-    if (currentFingerprint === nextFingerprint) return false;
+    if (!currentRecord.hasReceivedCanvasChange && currentTab.saveState === 'saved') {
+      const nextRecord = {
+        ...currentRecord,
+        snapshot,
+        savedFingerprint: nextFingerprint,
+        hasReceivedCanvasChange: true,
+      };
+
+      documentRecordByTabIdRef.current.set(tabId, nextRecord);
+      if (activeTabIdRef.current === tabId) {
+        snapshotRef.current = snapshot;
+      }
+      return false;
+    }
+
+    if (currentFingerprint === nextFingerprint) {
+      if (!currentRecord.hasReceivedCanvasChange) {
+        documentRecordByTabIdRef.current.set(tabId, {
+          ...currentRecord,
+          hasReceivedCanvasChange: true,
+        });
+      }
+      return false;
+    }
 
     const nextRecord = {
       ...currentRecord,
       snapshot,
+      hasReceivedCanvasChange: true,
     };
 
     documentRecordByTabIdRef.current.set(tabId, nextRecord);
@@ -259,29 +341,95 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
 
   const switchTab = useCallback((tabId: WorkspaceFileId) => setActive(tabId), [setActive]);
 
-  const closeTab = useCallback((tabId: WorkspaceFileId) => {
-    const currentTabs = tabsRef.current;
-    const tab = currentTabs.find((candidate) => candidate.id === tabId);
-    if (tab?.saveState === 'dirty' && !window.confirm(`Close ${tab.title} without saving?`)) return;
+  const closeTabs = useCallback((tabIds: Set<WorkspaceFileId>) => {
+    if (tabIds.size === 0) return;
 
-    const closedTabIndex = currentTabs.findIndex((candidate) => candidate.id === tabId);
-    const nextTabs = currentTabs.filter((candidate) => candidate.id !== tabId);
-    const nextActiveTab = activeTabIdRef.current === tabId
-      ? nextTabs[Math.max(0, closedTabIndex - 1)] ?? nextTabs[0] ?? null
+    const currentTabs = tabsRef.current;
+    const nextTabs = currentTabs.filter((candidate) => !tabIds.has(candidate.id));
+    const activeTabWasClosed = activeTabIdRef.current ? tabIds.has(activeTabIdRef.current) : false;
+    const firstClosedIndex = currentTabs.findIndex((candidate) => tabIds.has(candidate.id));
+    const nextActiveTab = activeTabWasClosed
+      ? nextTabs[Math.max(0, firstClosedIndex - 1)] ?? nextTabs[0] ?? null
       : nextTabs.find((candidate) => candidate.id === activeTabIdRef.current) ?? nextTabs[0] ?? null;
     const nextActiveTabId = nextActiveTab?.id ?? null;
 
-    documentRecordByTabIdRef.current.delete(tabId);
-    if (tab?.isUntitled) appStorage.deleteLocalDraft(tabId);
+    currentTabs.forEach((tab) => {
+      if (!tabIds.has(tab.id)) return;
+      documentRecordByTabIdRef.current.delete(tab.id);
+      if (tab.isUntitled) appStorage.deleteLocalDraft(tab.id);
+    });
+
     activeTabIdRef.current = nextActiveTabId;
     setActiveTabId(nextActiveTabId);
     setTabs(nextTabs);
   }, []);
 
+  const closeTab = useCallback((tabId: WorkspaceFileId) => {
+    const tab = tabsRef.current.find((candidate) => candidate.id === tabId);
+    if (!tab) return;
+    if (hasUnsavedWorkspaceTabChanges(tab) && !window.confirm(`Close ${tab.title} without saving?`)) return;
+    closeTabs(new Set([tabId]));
+  }, [closeTabs]);
+
+  const closeActiveTab = useCallback(() => {
+    const activeTabId = activeTabIdRef.current;
+    if (activeTabId) closeTab(activeTabId);
+  }, [closeTab]);
+
+  const closeSavedTabs = useCallback(() => {
+    const savedTabIds = tabsRef.current
+      .filter((tab) => tab.saveState === 'saved')
+      .map((tab) => tab.id);
+    closeTabs(new Set(savedTabIds));
+  }, [closeTabs]);
+
+  const closeAllTabs = useCallback(() => {
+    const currentTabs = tabsRef.current;
+    if (currentTabs.length === 0) return;
+
+    const unsavedTabs = currentTabs.filter(hasUnsavedWorkspaceTabChanges);
+    if (unsavedTabs.length > 0) {
+      const message = unsavedTabs.length === 1
+        ? `Close ${unsavedTabs[0].title} without saving?`
+        : `Close all ${currentTabs.length} tabs? ${unsavedTabs.length} tabs have unsaved changes.`;
+      if (!window.confirm(message)) return;
+    }
+
+    closeTabs(new Set(currentTabs.map((tab) => tab.id)));
+  }, [closeTabs]);
+
+  const clearActiveCanvasContents = useCallback(() => {
+    const activeTabId = activeTabIdRef.current;
+    const activeTab = tabsRef.current.find((candidate) => candidate.id === activeTabId);
+    if (!activeTab || activeTab.loadState !== 'loaded' || !activeTab.isSupported) return;
+    if (!window.confirm(`Clear the canvas contents in ${activeTab.title}? Other tabs will not be changed.`)) return;
+
+    const currentRecord = documentRecordByTabIdRef.current.get(activeTab.id) ?? createDocumentRecord(null);
+    const nextSnapshot = createClearedSnapshot(currentRecord.snapshot);
+    const nextRecord = {
+      ...currentRecord,
+      snapshot: nextSnapshot,
+      renderVersion: currentRecord.renderVersion + 1,
+      hasReceivedCanvasChange: false,
+    };
+
+    documentRecordByTabIdRef.current.set(activeTab.id, nextRecord);
+    snapshotRef.current = nextSnapshot;
+    setDocumentVersionBump((current) => current + 1);
+    setTabSaveState(activeTab.id, resolveSnapshotSaveState(nextSnapshot, nextRecord.savedFingerprint));
+  }, [setTabSaveState]);
+
   const saveTab = useCallback(async (tabId: WorkspaceFileId) => {
     const tab = tabsRef.current.find((candidate) => candidate.id === tabId);
     const snapshot = documentRecordByTabIdRef.current.get(tabId)?.snapshot;
-    if (!tab || !snapshot || !tab.isSupported || tab.loadState !== 'loaded' || tab.saveState === 'saving') return;
+    if (!tab) return;
+
+    if (tab.isUntitled && isEmptyDiagramSnapshot(snapshot)) {
+      setTabSaveError(tab.id, getEmptyUntitledSaveMessage());
+      return;
+    }
+
+    if (!canSaveWorkspaceTab(tab) || !snapshot) return;
 
     setTabs((currentTabs) =>
       currentTabs.map((candidate) =>
@@ -304,6 +452,7 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
         documentRecordByTabIdRef.current.set(document.id, {
           ...currentRecord,
           savedFingerprint,
+          renderVersion: currentRecord.renderVersion + 1,
         });
         appStorage.deleteLocalDraft(tabId);
         activeTabIdRef.current = document.id;
@@ -375,7 +524,7 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
         ),
       );
     }
-  }, []);
+  }, [setTabSaveError]);
 
   const saveActiveTab = useCallback(async () => {
     const activeTabId = activeTabIdRef.current;
@@ -387,6 +536,7 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
     activeTab,
     activeTabId,
     activeSnapshot,
+    activeDocumentKey,
     snapshotRef,
     getCurrentSnapshot,
     handleSnapshotChange,
@@ -394,6 +544,10 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
     openUntitledTab,
     switchTab,
     closeTab,
+    closeActiveTab,
+    closeSavedTabs,
+    closeAllTabs,
+    clearActiveCanvasContents,
     saveTab,
     saveActiveTab,
     setWorkspaceSaveTarget,
@@ -402,12 +556,17 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
     activeTab,
     activeTabId,
     activeSnapshot,
+    activeDocumentKey,
     getCurrentSnapshot,
     handleSnapshotChange,
     openEntryAsTab,
     openUntitledTab,
     switchTab,
     closeTab,
+    closeActiveTab,
+    closeSavedTabs,
+    closeAllTabs,
+    clearActiveCanvasContents,
     saveTab,
     saveActiveTab,
     setWorkspaceSaveTarget,

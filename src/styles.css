@@ -3152,3 +3152,168 @@ body.is-resizing-sidebar .sidebar-resizer::after { opacity: 1; }
   height: 14px;
   margin: 0;
 }
+
+/* Workspace tabs UX fixes */
+.workspace-tabs-bar {
+  position: relative;
+  z-index: 20;
+  width: 100%;
+  min-width: 0;
+  height: 32px;
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--workspace-border, var(--hairline));
+  background: var(--workspace-panel-bg, var(--canvas-soft));
+}
+.workspace-tabs-bar .workspace-tabs-shell {
+  flex: 1 1 auto;
+  width: auto;
+  height: 100%;
+  border-bottom: 0;
+  background: transparent;
+}
+.workspace-tabs-bar .workspace-tabs {
+  background: transparent;
+}
+.workspace-tabs-actions {
+  flex: 0 0 36px;
+  width: 36px;
+  display: inline-flex;
+  align-items: stretch;
+  justify-content: center;
+  border-left: 1px solid var(--workspace-border, var(--hairline));
+  background: var(--workspace-header-bg, var(--canvas));
+}
+.workspace-tabs-menu-trigger {
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--body);
+  box-shadow: none;
+}
+.workspace-tabs-menu-trigger:hover,
+.workspace-tabs-menu-trigger:focus-visible,
+.workspace-tabs-menu-trigger[data-state='open'] {
+  background: var(--workspace-hover-bg, var(--canvas-soft-2));
+  color: var(--ink);
+}
+.workspace-tab {
+  transition: background 120ms ease, box-shadow 120ms ease, color 120ms ease;
+}
+.workspace-tab:hover {
+  background: var(--workspace-hover-bg, var(--canvas-soft-2));
+}
+.workspace-tab.is-active,
+.workspace-tab:has(.workspace-tab-button[aria-selected='true']) {
+  position: relative;
+  background: color-mix(in srgb, var(--workspace-editor-bg, var(--canvas)) 86%, var(--link) 14%);
+  box-shadow: inset 0 2px 0 var(--link), inset 0 -1px 0 var(--workspace-editor-bg, var(--canvas));
+}
+.workspace-tab.is-active:hover,
+.workspace-tab:has(.workspace-tab-button[aria-selected='true']):hover {
+  background: color-mix(in srgb, var(--workspace-editor-bg, var(--canvas)) 82%, var(--link) 18%);
+}
+.workspace-tab.is-active .workspace-tab-button:hover,
+.workspace-tab.is-active .workspace-tab-button:focus-visible,
+.workspace-tab:has(.workspace-tab-button[aria-selected='true']) .workspace-tab-button:hover,
+.workspace-tab:has(.workspace-tab-button[aria-selected='true']) .workspace-tab-button:focus-visible {
+  background: transparent;
+}
+.workspace-tab.is-active .workspace-tab-title,
+.workspace-tab:has(.workspace-tab-button[aria-selected='true']) .workspace-tab-title {
+  color: var(--ink);
+  font-weight: 650;
+}
+.workspace-tab-button:hover,
+.workspace-tab-button:focus-visible,
+.workspace-tab-close:hover,
+.workspace-tab-close:focus-visible,
+.workspace-tab-save:hover,
+.workspace-tab-save:focus-visible {
+  background: color-mix(in srgb, var(--workspace-hover-bg, var(--canvas-soft-2)) 82%, transparent);
+  color: var(--ink);
+}
+.workspace-tab-save {
+  color: #18794e;
+}
+.workspace-tab-save:disabled,
+.workspace-top-action:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+.workspace-tab-close:hover,
+.workspace-tab-close:focus-visible {
+  color: var(--error);
+}
+.workspace-tabs-menu {
+  z-index: 1000;
+  min-width: 210px;
+  padding: 5px;
+  border: 1px solid var(--workspace-border, var(--hairline));
+  border-radius: 8px;
+  background: var(--canvas);
+  color: var(--ink);
+  box-shadow: var(--shadow-2, 0 18px 45px rgba(0, 0, 0, 0.14));
+}
+.workspace-tabs-menu-item {
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  border-radius: 5px;
+  padding: 0 9px;
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 28px;
+  outline: none;
+  cursor: default;
+}
+.workspace-tabs-menu-item[data-highlighted] {
+  background: var(--workspace-hover-bg, var(--canvas-soft-2));
+}
+.workspace-tabs-menu-item[data-disabled] {
+  color: var(--mute);
+  opacity: 0.55;
+}
+.workspace-tabs-menu-item.is-danger {
+  color: var(--error);
+}
+.workspace-tabs-menu-item.is-danger[data-highlighted] {
+  background: color-mix(in srgb, var(--error) 12%, transparent);
+}
+.workspace-tabs-menu-separator {
+  height: 1px;
+  margin: 5px 3px;
+  background: var(--workspace-border, var(--hairline));
+}
+.app-shell.theme-dark .workspace-tabs-bar {
+  border-color: var(--workspace-border);
+  background: var(--workspace-panel-bg);
+}
+.app-shell.theme-dark .workspace-tabs-bar .workspace-tabs-shell,
+.app-shell.theme-dark .workspace-tabs-bar .workspace-tabs {
+  background: transparent;
+}
+.app-shell.theme-dark .workspace-tabs-actions {
+  border-color: var(--workspace-border);
+  background: var(--workspace-header-bg);
+}
+.app-shell.theme-dark .workspace-tab.is-active,
+.app-shell.theme-dark .workspace-tab:has(.workspace-tab-button[aria-selected='true']) {
+  background: color-mix(in srgb, var(--workspace-editor-bg, var(--canvas)) 78%, var(--link) 22%);
+  box-shadow: inset 0 2px 0 var(--link), inset 0 -1px 0 var(--workspace-editor-bg, var(--canvas));
+}
+.app-shell.theme-dark .workspace-tab.is-active:hover,
+.app-shell.theme-dark .workspace-tab:has(.workspace-tab-button[aria-selected='true']):hover {
+  background: color-mix(in srgb, var(--workspace-editor-bg, var(--canvas)) 74%, var(--link) 26%);
+}
+.app-shell.theme-dark .workspace-tabs-menu {
+  border-color: var(--workspace-border);
+  background: #171717;
+  color: var(--ink);
+}
