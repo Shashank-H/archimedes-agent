@@ -1,171 +1,87 @@
 # Archimedes Agent
 
 <p align="center">
-  <img src="logos/logo.png" alt="Archimedes Agent logo" width="250" />
+  <img src="logos/logo.png" alt="Archimedes Agent logo" width="220" />
 </p>
 
-A local-first desktop/web prototype for drawing system-design diagrams with Excalidraw and brainstorming with a right-side Archimedes assistant.
+<p align="center">
+  <strong>A local-first, IDE-style drawing workspace for system design diagrams and wireframes.</strong>
+</p>
 
-The app embeds Excalidraw as the diagramming surface and sends an exported diagram image to a vision-capable LLM. It defaults to local Ollama (`gemma4:e4b`) and can also target OpenAI-compatible chat-completions endpoints. The assistant reviews the diagram, asks questions, highlights risks, and suggests improvements.
+<p align="center">
+  Like VS Code or Cursor, but for visual architecture and product-design work: files, tabs, diagram context, and AI agents that understand the canvas.
+</p>
 
-## Current status
+<p align="center">
+  <img alt="License" src="https://img.shields.io/badge/license-AGPL--3.0-blue" />
+  <img alt="Local-first" src="https://img.shields.io/badge/local--first-yes-2ea44f" />
+  <img alt="React" src="https://img.shields.io/badge/React-19-61dafb" />
+  <img alt="Tauri" src="https://img.shields.io/badge/Tauri-2.8-ffc131" />
+</p>
 
-Implemented and working in browser/dev mode:
+Archimedes is a diagram-native workspace for reasoning about systems and interfaces. It combines an Excalidraw-based canvas with a workspace-aware assistant that can review visual designs, call out architectural risks, and help evolve diagrams over time. The long-term direction is a serious open-source visual IDE: file management, tabs, local-first desktop workflows, and focused agents for review, completion, and design assistance.
 
-- Tauri + Vite + React + TypeScript scaffold.
-- Embedded `@excalidraw/excalidraw` canvas.
-- Persistent right-side assistant panel.
-- Manual diagram review button.
-- User chat with current diagram image included.
-- Proactive review after meaningful diagram changes and inactivity.
-- Ollama `/api/chat` streaming client and OpenAI-compatible `/chat/completions` streaming client.
-- Image-first prompt flow using exported Excalidraw PNG/WebP base64.
-- Lightweight Excalidraw metadata summary as secondary context.
-- Local persistence for diagram scene, chat, and settings.
-- Settings UI for API shape/provider, endpoint/base URL, model, optional API key, temperature, and proactive review.
-- Verified local `gemma4:e4b` can inspect real PNG images through Ollama.
+## Demo
 
-Not yet complete:
+<video src="docs/assets/archimedes-v0-demo.mp4" controls width="100%" title="Archimedes V0 demo"></video>
 
-- Packaged Windows `.exe`/`.msi` artifact has not been produced in this WSL environment.
-- Native Tauri packaging is blocked locally by missing platform build dependencies/tooling.
-- Windows file/folder association behavior must be verified on a Windows machine after installing the packaged build.
-- The UI is functional but not polished.
-- The proactive-review behavior is implemented but should be tuned with real usage.
-- Full E2E/browser automation tests are not present.
+If the embedded player does not render on your client, open the demo directly: [`docs/assets/archimedes-v0-demo.mp4`](docs/assets/archimedes-v0-demo.mp4).
 
-## How it works
+The demo shows the V0 workflow: opening the workspace, drawing with the Excalidraw canvas, requesting an AI review, receiving actionable feedback, and continuing the diagramming loop.
 
-The assistant is image-first:
+## Why Archimedes?
 
-1. User draws in Excalidraw.
-2. On manual review, chat send, or proactive trigger, the app exports the current diagram to an image.
-3. The app converts the image Blob to base64.
-4. It sends the base64 image to the selected provider: Ollama uses the `images` array on `/api/chat`; OpenAI-compatible providers use a multimodal `image_url` data URL on `/chat/completions`.
-5. It also sends a small text metadata summary: labels, arrows, element count, groups, unlabeled components.
-6. Archimedes streams a response into the assistant panel.
+System design and wireframe tools are visual, but they rarely feel like developer tools. AI chat tools can discuss architecture, but they are not diagram-native and usually do not understand the workspace around the drawing.
 
-The full Excalidraw scene JSON is saved locally for persistence, but it is not sent wholesale to Ollama.
+Archimedes brings those worlds together:
 
-## Requirements
+- an IDE-style workspace for visual architecture and wireframe files;
+- a local-first drawing surface that keeps the canvas fast and private by default;
+- assistant workflows that operate on the actual diagram image, not just pasted text;
+- a provider abstraction for local Ollama models and OpenAI-compatible vision models;
+- a roadmap toward multiple focused agents that review, complete, and improve diagrams in context.
 
-For browser/dev mode:
+## Core features
 
-- Node.js 24+
-- npm
-- Either Ollama running locally with a vision-capable model, or an OpenAI-compatible endpoint with a vision-capable model
+### Available today
 
-For desktop packaging:
+- **Excalidraw drawing surface** for system diagrams, wireframes, arrows, labels, frames, and freeform sketches.
+- **Persistent assistant panel** for manual reviews, diagram-aware chat, and proactive observations.
+- **Vision-capable diagram review** by exporting the current canvas as an image and sending it to the configured model.
+- **Local Ollama support** with image input through `/api/chat`.
+- **OpenAI-compatible provider support** for streaming `/chat/completions` endpoints that accept multimodal messages.
+- **Local persistence** for the current scene, chat history, and provider settings.
+- **Desktop and browser development paths** through Tauri, Vite, React, and TypeScript.
 
-- Rust/Cargo
-- Tauri platform dependencies
-- For Windows builds, native Windows with Visual Studio Build Tools is recommended.
+### Roadmap direction
 
-## Run in browser/dev mode
+- **Review agent** that critiques diagrams for correctness, missing pieces, scalability, risks, and tradeoffs.
+- **Autocomplete / completion agent** that suggests or creates the next useful diagram elements.
+- **Design assistant / copilot** for wireframes, visual layouts, and system-design structure.
+- **Workspace-aware assistant** that understands files, tabs, projects, and diagram history.
+- **Native file/folder handling** with stronger desktop OS integration.
+- **CLI and Open-with workflows** for launching Archimedes directly from project folders or diagram files.
 
-Install dependencies:
+## Quick start
+
+### Browser/dev mode
+
+Requirements: Node.js 24+, npm, and either Ollama or an OpenAI-compatible vision model endpoint.
 
 ```bash
 npm install
-```
-
-Start Vite:
-
-```bash
 npm run dev
 ```
 
-Open:
+Open the Vite dev server:
 
 ```txt
 http://localhost:1420
 ```
 
-The app can be used in the browser during development. Tauri packaging is separate.
+### Desktop/Tauri mode
 
-## Desktop OS integration
-
-Packaged desktop builds support opening workspace folders and `.excalidraw` / `.excalidraw.json` files through native launch paths. See [OS Open, CLI Launching, and Windows Console Behavior](docs/OS_OPEN_AND_CLI.md) for CLI examples, Windows console expectations, file/folder association notes, Linux/iOS limitations, and verification steps.
-
-## Ollama setup
-
-Start Ollama:
-
-```bash
-ollama serve
-```
-
-Ensure the model exists:
-
-```bash
-ollama show gemma4:e4b
-```
-
-The app defaults to:
-
-```txt
-Endpoint: http://localhost:11434
-Model: gemma4:e4b
-```
-
-You can change these in the assistant panel settings.
-
-## OpenAI-compatible setup
-
-In **Settings**, change **API shape** to **OpenAI-compatible**. Use one endpoint/base URL field:
-
-```txt
-Endpoint / base URL: https://api.openai.com/v1
-Model: gpt-4o-mini (or another vision-capable chat model)
-API key: your provider token, if required
-```
-
-Other compatible providers can work if they implement streaming `POST /chat/completions` with OpenAI-style Server-Sent Events and multimodal message content. For local servers such as LM Studio or vLLM, set the base URL they expose, for example:
-
-```txt
-Endpoint / base URL: http://localhost:1234/v1
-Model: your-vision-model
-API key: optional, depending on the server
-```
-
-Important: Archimedes sends the current diagram as an image, so the selected model must support vision/image input. Text-only models may connect successfully but fail during review or ignore the diagram image.
-
-## Validate image support
-
-We verified that `gemma4:e4b` can read real PNG payloads through Ollama. See:
-
-```txt
-docs/plans/OLLAMA_IMAGE_TEST.md
-```
-
-Important detail: an initial tiny embedded test was misleading. A real PNG generated by ffmpeg worked, and the model correctly read text and identified shapes.
-
-## Build frontend
-
-```bash
-npm run build
-```
-
-This runs TypeScript and Vite production bundling. The build currently passes, but Vite reports large chunk warnings due to Excalidraw and related bundles.
-
-## PostHog analytics
-
-PostHog is disabled by default and gated at build time through Vite env vars:
-
-```bash
-VITE_POSTHOG_ENABLED=true \
-VITE_POSTHOG_KEY=phc_your_project_key \
-VITE_POSTHOG_HOST=https://us.i.posthog.com \
-npm run build
-```
-
-For local/private builds, leave `VITE_POSTHOG_ENABLED=false` or unset. See `.env.example` for the available variables.
-
-The integration intentionally disables autocapture and session recording. It only sends lightweight product events such as app load, review start/completion/failure, provider connection test result, and chat clear. Diagram images, prompts, chats, endpoints, API keys, and full scene data are not captured.
-
-## Tauri desktop development
-
-Run Tauri dev mode after installing Rust and Tauri platform dependencies:
+Install Rust/Cargo and the Tauri platform dependencies for your OS, then run:
 
 ```bash
 npm run tauri -- dev
@@ -177,73 +93,104 @@ Build a desktop bundle:
 npm run tauri -- build
 ```
 
-See Windows-specific notes:
+Windows packaging notes live in [`docs/plans/BUILD_WINDOWS.md`](docs/plans/BUILD_WINDOWS.md).
 
-```txt
-BUILD_WINDOWS.md
+### Production frontend build
+
+```bash
+npm run build
 ```
 
-## Repository layout
+## Model/provider setup
 
-```txt
-src/
-  App.tsx                         Main orchestration: state, agent calls, proactive review
-  main.tsx                        React entrypoint
-  styles.css                      App styling
-  types.ts                        Shared app types and defaults
-  components/
-    DiagramCanvas.tsx             Excalidraw wrapper
-    AssistantPanel.tsx            Chat/review/settings UI
-  lib/
-    diagramImage.ts               Exports Excalidraw scene to image/base64
-    diagramSummary.ts             Extracts lightweight diagram metadata
-    storage.ts                    localStorage persistence
-    llm/
-      ollama.ts                   Ollama streaming client
-      prompts.ts                  Agent system/review prompts
-src-tauri/
-  Cargo.toml                      Tauri Rust package
-  tauri.conf.json                 Tauri app/window/bundle config
-  src/main.rs, src/lib.rs         Tauri entrypoints
-  capabilities/default.json       Tauri v2 capabilities
-  icons/                          Generated app icons from logos/logo.png
+Archimedes sends the current diagram as an image, so the selected model must support vision input. Text-only models may connect successfully but fail during review or ignore the diagram.
 
-docs/
-  ARCHITECTURE.md                 Current implementation architecture
-  USAGE.md                        User guide
-  DEVELOPMENT.md                  Developer guide
-  TROUBLESHOOTING.md              Known issues and fixes
-  plans/                          Planning/verification notes
+### Ollama
+
+Start Ollama:
+
+```bash
+ollama serve
 ```
 
-## Privacy model
+Ensure your vision model is available:
 
-The app is local-first:
+```bash
+ollama show gemma4:e4b
+```
 
-- Diagrams and chats are stored in browser/webview localStorage.
-- Diagram images are sent only to the configured Ollama endpoint.
-- Default endpoint is localhost.
-- No cloud API is used by the app unless PostHog analytics is explicitly enabled at build time.
-- PostHog analytics, when enabled, captures only lightweight product events and does not capture diagram images, prompts, chats, Ollama endpoints, or full scene data.
+Default settings:
 
-If the endpoint is changed to a remote URL, diagram images and prompts will be sent there.
+```txt
+Endpoint: http://localhost:11434
+Model: gemma4:e4b
+```
 
-## Known limitations
+See [`docs/plans/OLLAMA_IMAGE_TEST.md`](docs/plans/OLLAMA_IMAGE_TEST.md) for notes from image-input validation.
 
-- localStorage persistence is simple and not ideal for large/long-term projects.
-- No explicit export/import project file UX yet.
-- No model cancellation button in UI yet, though internal abort plumbing exists.
-- No multi-session/project management.
-- No signed installers yet.
-- No production CSP hardening yet; Tauri CSP is currently `null` for development convenience.
-- No bundle size optimization yet.
+### OpenAI-compatible providers
 
-## Docs
+In **Settings**, set **API shape** to **OpenAI-compatible** and configure:
 
-Start here:
+```txt
+Endpoint / base URL: https://api.openai.com/v1
+Model: a vision-capable chat model
+API key: your provider token, if required
+```
 
-- `docs/USAGE.md` — how to use the app.
-- `docs/ARCHITECTURE.md` — current architecture and data flow.
-- `docs/DEVELOPMENT.md` — development/build notes.
-- `docs/TROUBLESHOOTING.md` — common problems.
-- `BUILD_WINDOWS.md` — Windows packaging options.
+Local servers such as LM Studio or vLLM can work if they expose streaming OpenAI-style `POST /chat/completions` with multimodal message content.
+
+For deeper usage and troubleshooting, see [`docs/USAGE.md`](docs/USAGE.md) and [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md).
+
+## Desktop app and OS integration
+
+Archimedes is built with Tauri so the same React workspace can run as a desktop app. Browser/dev mode is the easiest way to try the project today. Native packaging, signed installers, better file/folder handling, Open-with support, and OS-level workflows are active product directions.
+
+## Architecture overview
+
+Archimedes uses React + TypeScript for the UI, Excalidraw for the drawing canvas, Tauri for desktop packaging, and a class-based provider abstraction for local or remote LLM backends. The assistant flow is image-first: the app exports the current diagram to an image, adds a lightweight metadata summary, and streams model feedback into the assistant panel.
+
+Read more in:
+
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — implementation architecture and data flow.
+- [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) — development and build notes.
+- [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md) — current project status.
+
+## Privacy and local-first model
+
+Archimedes is local-first by default:
+
+- diagrams, chats, and settings are stored in browser/webview local storage;
+- the default model endpoint is local Ollama on `localhost`;
+- diagram images and prompts are sent only to the provider endpoint you configure;
+- API keys stay in local app storage and are not committed by the app;
+- PostHog analytics are disabled unless explicitly enabled at build time.
+
+If you configure a remote provider, the current diagram image, prompt, and lightweight diagram metadata are sent to that provider for the requested review or chat response.
+
+When analytics are enabled, Archimedes only emits lightweight product events such as app load, review start/completion/failure, provider connection test result, and chat clear. It does **not** capture diagram images, prompts, chats, endpoints, API keys, or full scene data.
+
+## Contributing
+
+Contributions are welcome, especially around workspace/file UX, provider support, agent workflows, desktop packaging, and documentation.
+
+1. Install dependencies with `npm install`.
+2. Run the app with `npm run dev`.
+3. Validate production output with `npm run build`.
+4. Read [`AGENTS.md`](AGENTS.md) for project coding conventions before making UI or architecture changes.
+5. Use GitHub issues for bugs, design proposals, and roadmap discussion.
+
+Useful docs:
+
+- [`docs/USAGE.md`](docs/USAGE.md)
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+- [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)
+- [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md)
+
+## License
+
+This project is released under the [GNU AGPL-3.0](LICENSE).
+
+## Acknowledgements
+
+Archimedes builds on excellent open-source tools, including [Excalidraw](https://github.com/excalidraw/excalidraw), [React](https://react.dev/), [Tauri](https://tauri.app/), [Vite](https://vite.dev/), and [Ollama](https://ollama.com/).
