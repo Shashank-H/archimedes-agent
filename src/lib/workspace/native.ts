@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { parseExcalidrawFile, serializeExcalidrawFile } from '../excalidrawFile';
 import type { DiagramSnapshot } from '../../types';
 import type {
+  NativeOpenWorkspacePathResult,
   WorkspaceDataProvider,
   WorkspaceDocument,
   WorkspaceEntry,
@@ -33,6 +34,15 @@ type NativeOpenRootDto = {
   children: NativeWorkspaceEntryDto[];
 };
 
+type NativeOpenPathDto = {
+  status: 'opened' | 'invalid' | 'unsupported';
+  kind: 'file' | 'directory' | null;
+  path: string;
+  root: NativeOpenRootDto | null;
+  target_entry: NativeWorkspaceEntryDto | null;
+  message: string | null;
+};
+
 function toRoot(dto: NativeWorkspaceRootDto): WorkspaceRoot {
   return { id: dto.id as WorkspaceRoot['id'], providerKind: 'native', name: dto.name, path: dto.path };
 }
@@ -49,6 +59,10 @@ function toEntry(dto: NativeWorkspaceEntryDto): WorkspaceEntry {
     extension: dto.extension ?? undefined,
     isSupported: dto.is_supported,
   };
+}
+
+function toOpenRootResult(dto: NativeOpenRootDto): WorkspaceOpenRootResult {
+  return { root: toRoot(dto.root), children: dto.children.map(toEntry) };
 }
 
 function extensionFor(name: string) {
@@ -80,7 +94,7 @@ export class NativeWorkspaceProvider implements WorkspaceDataProvider {
       return this.openRootAt(rootPath);
     }
 
-    return { root: toRoot(result.root), children: result.children.map(toEntry) };
+    return toOpenRootResult(result);
   }
 
   async restoreRoot(root: WorkspaceRoot): Promise<WorkspaceOpenRootResult> {
@@ -90,7 +104,40 @@ export class NativeWorkspaceProvider implements WorkspaceDataProvider {
   async openRootAt(rootPath: string): Promise<WorkspaceOpenRootResult> {
     const result = await invoke<NativeOpenRootDto | null>('open_workspace_root_at', { rootPath });
     if (!result) throw new Error('Could not open workspace folder.');
-    return { root: toRoot(result.root), children: result.children.map(toEntry) };
+    return toOpenRootResult(result);
+  }
+
+  async openPath(path: string): Promise<NativeOpenWorkspacePathResult> {
+    const result = await invoke<NativeOpenPathDto>('open_workspace_path', { requestedPath: path });
+
+    if (result.status !== 'opened' || !result.root) {
+      return {
+        status: result.status,
+        kind: result.kind ?? undefined,
+        path: result.path,
+        root: null,
+        children: [],
+        targetEntry: null,
+        message: result.message ?? 'Could not open the requested path.',
+      };
+    }
+
+    return {
+      status: 'opened',
+      kind: result.kind ?? undefined,
+      path: result.path,
+      ...toOpenRootResult(result.root),
+      targetEntry: result.target_entry ? toEntry(result.target_entry) : null,
+      message: result.message ?? undefined,
+    };
+  }
+
+  async takeNativeOpenRequests(): Promise<string[]> {
+    return invoke<string[]>('take_native_open_requests');
+  }
+
+  async registerWindowWorkspaceRoot(rootPath: string | null): Promise<void> {
+    await invoke('register_window_workspace_root', { rootPath });
   }
 
   async listChildren(root: WorkspaceRoot, directoryId: WorkspaceEntry['id']): Promise<WorkspaceEntry[]> {

@@ -32,6 +32,27 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "fileAssociations": [
+      {
+        "ext": ["excalidraw"],
+        "name": "Excalidraw diagram",
+        "description": "Excalidraw diagram",
+        "role": "Editor",
+        "mimeType": "application/vnd.excalidraw+json"
+      },
+      {
+        "ext": ["excalidraw.json"],
+        "name": "Excalidraw JSON diagram",
+        "description": "Excalidraw JSON diagram",
+        "role": "Editor",
+        "mimeType": "application/json"
+      }
+    ],
+    "windows": {
+      "nsis": {
+        "installerHooks": "windows/nsis-hooks.nsh"
+      }
+    }
   }
 }

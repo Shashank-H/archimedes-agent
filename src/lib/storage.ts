@@ -21,6 +21,12 @@ export type StoredWorkspaceRoot = {
   path: string;
 };
 const SIDEBAR_WIDTH_KEY = 'archimedes-agent.sidebarWidth.v1';
+const WINDOW_SCOPED_KEYS = new Set([SCENE_KEY, LOCAL_DRAFTS_KEY, CHAT_KEY, WORKSPACE_ROOT_KEY]);
+
+function isIsolatedWindowStorage() {
+  if (typeof window === 'undefined') return false;
+  return new URLSearchParams(window.location.search).get('archimedesWindow') === 'isolated';
+}
 
 export class AppStorage {
   private getBrowserTheme(): AppSettings['theme'] {
@@ -28,9 +34,14 @@ export class AppStorage {
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
 
+  private storageForKey(key: string): Storage {
+    if (isIsolatedWindowStorage() && WINDOW_SCOPED_KEYS.has(key)) return sessionStorage;
+    return localStorage;
+  }
+
   private readJson<T>(key: string, fallback: T): T {
     try {
-      const raw = localStorage.getItem(key);
+      const raw = this.storageForKey(key).getItem(key);
       if (!raw) return fallback;
 
       const parsed = JSON.parse(raw);
@@ -52,7 +63,7 @@ export class AppStorage {
   }
 
   private writeJson(key: string, value: unknown) {
-    localStorage.setItem(key, JSON.stringify(value));
+    this.storageForKey(key).setItem(key, JSON.stringify(value));
   }
 
   loadSettings(): AppSettings {
@@ -176,7 +187,7 @@ export class AppStorage {
   }
 
   deleteWorkspaceRoot() {
-    localStorage.removeItem(WORKSPACE_ROOT_KEY);
+    this.storageForKey(WORKSPACE_ROOT_KEY).removeItem(WORKSPACE_ROOT_KEY);
   }
 
   loadChat(): ChatMessage[] {

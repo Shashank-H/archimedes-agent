@@ -87,7 +87,7 @@ fn extension_for_path(path: &PathBuf) -> Option<String> {
     }
 }
 
-fn is_supported_diagram_path(path: &str) -> bool {
+pub fn is_supported_diagram_path(path: &str) -> bool {
     let lower_path = path.to_lowercase();
     lower_path.ends_with(".excalidraw") || lower_path.ends_with(".excalidraw.json")
 }

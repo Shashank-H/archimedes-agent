@@ -55,6 +55,19 @@ src-tauri\target\release\bundle\nsis\*.exe
 src-tauri\target\release\bundle\msi\*.msi
 ```
 
+After installing the NSIS build, verify:
+
+1. Launching from Explorer or Start Menu does not show a console window.
+2. `.excalidraw` and `.excalidraw.json` files show/open with Archimedes.
+3. Folders, folder backgrounds, generic shell folders, and drives show `Open with Archimedes` (on Windows 11 this may be under **Show more options**).
+4. The installer offers `Add the archimedes command to my user PATH`; when checked, a new terminal can run `archimedes .`.
+5. Launching a second file/folder inside an active workspace focuses the matching existing window and opens the requested path.
+6. Launching a file/folder outside every active workspace opens a new isolated window with separate per-window content.
+7. Launching Archimedes again from the taskbar/shortcut while it is already running opens a new empty isolated window.
+8. CLI-style launches work for no args, `.`, folders, and files with spaces.
+
+See `docs/OS_OPEN_AND_CLI.md` for the full checklist.
+
 ## Option B: Build using GitHub Actions
 
 A workflow has been added at:

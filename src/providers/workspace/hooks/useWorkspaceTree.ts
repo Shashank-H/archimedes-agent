@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { appStorage } from '../../../lib/storage';
+import { nativeWorkspaceProvider } from '../../../lib/workspace/native';
 import { workspaceProviderFactory } from '../../../lib/workspace/factory';
-import type { WorkspaceEntry, WorkspaceFileId, WorkspaceOpenRootResult, WorkspaceRoot, WorkspaceRootId } from '../../../lib/workspace/types';
+import type { NativeOpenWorkspacePathResult, WorkspaceEntry, WorkspaceFileId, WorkspaceOpenRootResult, WorkspaceRoot, WorkspaceRootId } from '../../../lib/workspace/types';
 
 function toErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
@@ -20,6 +21,12 @@ export function useWorkspaceTree() {
     setEntriesByParentId({ [result.root.id]: result.children });
     setExpandedEntryIds(new Set([result.root.id]));
     setSelectedEntryId(null);
+  }, []);
+
+  const saveRestorableRoot = useCallback((openedRoot: WorkspaceRoot) => {
+    if (openedRoot.providerKind === 'native' || openedRoot.providerKind === 'browser') {
+      appStorage.saveWorkspaceRoot({ providerKind: openedRoot.providerKind, path: openedRoot.path });
+    }
   }, []);
 
   useEffect(() => {
@@ -69,15 +76,37 @@ export function useWorkspaceTree() {
       const provider = workspaceProviderFactory.getDefaultProvider();
       const result = await provider.openRoot();
       applyRootResult(result);
-      if (result.root.providerKind === 'native' || result.root.providerKind === 'browser') {
-        appStorage.saveWorkspaceRoot({ providerKind: result.root.providerKind, path: result.root.path });
-      }
+      saveRestorableRoot(result.root);
     } catch (error) {
       setTreeError(toErrorMessage(error));
     } finally {
       setIsOpeningRoot(false);
     }
-  }, [applyRootResult]);
+  }, [applyRootResult, saveRestorableRoot]);
+
+  const openNativePath = useCallback(async (path: string): Promise<NativeOpenWorkspacePathResult | null> => {
+    setIsOpeningRoot(true);
+    setTreeError(null);
+    try {
+      const result = await nativeWorkspaceProvider.openPath(path);
+      if (result.status !== 'opened' || !result.root) {
+        setTreeError(result.message ?? `Could not open ${path}.`);
+        return result;
+      }
+
+      applyRootResult({ root: result.root, children: result.children });
+      saveRestorableRoot(result.root);
+      if (result.targetEntry) {
+        setSelectedEntryId(result.targetEntry.id);
+      }
+      return result;
+    } catch (error) {
+      setTreeError(toErrorMessage(error));
+      return null;
+    } finally {
+      setIsOpeningRoot(false);
+    }
+  }, [applyRootResult, saveRestorableRoot]);
 
   const refreshWorkspaceRoot = useCallback(async () => {
     if (!root) return;
@@ -123,6 +152,7 @@ export function useWorkspaceTree() {
     treeError,
     setSelectedEntryId,
     openWorkspaceRoot,
+    openNativePath,
     refreshWorkspaceRoot,
     toggleDirectory,
   };
