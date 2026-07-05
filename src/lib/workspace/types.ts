@@ -62,6 +62,16 @@ export type WorkspaceOpenRootResult = {
   children: WorkspaceEntry[];
 };
 
+export type NativeOpenWorkspacePathResult = {
+  status: 'opened' | 'invalid' | 'unsupported';
+  kind?: WorkspaceEntryKind;
+  path: string;
+  root: WorkspaceRoot | null;
+  children: WorkspaceEntry[];
+  targetEntry: WorkspaceEntry | null;
+  message?: string;
+};
+
 export type WorkspaceCreateDocumentResult = {
   document: WorkspaceDocument;
   entry: WorkspaceEntry;

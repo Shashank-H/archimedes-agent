@@ -29,6 +29,7 @@ Not yet complete:
 
 - Packaged Windows `.exe`/`.msi` artifact has not been produced in this WSL environment.
 - Native Tauri packaging is blocked locally by missing platform build dependencies/tooling.
+- Windows file/folder association behavior must be verified on a Windows machine after installing the packaged build.
 - The UI is functional but not polished.
 - The proactive-review behavior is implemented but should be tuned with real usage.
 - Full E2E/browser automation tests are not present.
@@ -81,6 +82,10 @@ http://localhost:1420
 ```
 
 The app can be used in the browser during development. Tauri packaging is separate.
+
+## Desktop OS integration
+
+Packaged desktop builds support opening workspace folders and `.excalidraw` / `.excalidraw.json` files through native launch paths. See [OS Open, CLI Launching, and Windows Console Behavior](docs/OS_OPEN_AND_CLI.md) for CLI examples, Windows console expectations, file/folder association notes, Linux/iOS limitations, and verification steps.
 
 ## Ollama setup
 
