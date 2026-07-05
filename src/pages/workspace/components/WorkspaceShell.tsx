@@ -1,4 +1,5 @@
 import { useState, type CSSProperties, type ReactNode } from 'react';
+import workspaceShellStyles from './WorkspaceShell.module.css';
 import { DiagramCanvas } from '../../../components/diagram/DiagramCanvas';
 import { useChat } from '../../../providers/chat/ChatContext';
 import { useWorkspace } from '../../../providers/workspace/WorkspaceContext';
@@ -52,7 +53,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
 
   return (
     <main
-      className={`app-shell theme-${settings.theme}${isExplorerCollapsed ? ' is-explorer-collapsed' : ''}${isAssistantCollapsed ? ' is-assistant-collapsed' : ''}`}
+      className={`app-shell theme-${settings.theme} ${workspaceShellStyles.moduleAnchor}${isExplorerCollapsed ? ' is-explorer-collapsed' : ''}${isAssistantCollapsed ? ' is-assistant-collapsed' : ''}`}
       style={{ '--sidebar-width': `${sidebarWidth}px` } as CSSProperties}
     >
       <WorkspaceTopBar

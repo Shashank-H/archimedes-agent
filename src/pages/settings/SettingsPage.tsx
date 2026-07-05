@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
+import settingsPageStyles from './SettingsPage.module.css';
 import { AppDialog, AppDialogTitle } from '../../components/ui/AppDialog';
 import { AppSwitch } from '../../components/ui/AppSwitch';
 import { Icon } from '../../components/ui/icons';
@@ -118,7 +119,7 @@ export function SettingsPage() {
 
   return (
     <>
-      <section className="settings-section">
+      <section className={`settings-section ${settingsPageStyles.moduleAnchor}`}>
           <SettingsAccordion
             open={providerConfigOpen}
             onOpenChange={setProviderConfigOpen}

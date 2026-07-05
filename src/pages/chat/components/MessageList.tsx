@@ -1,10 +1,11 @@
 import { MarkdownMessage } from '../../../components/MarkdownMessage';
+import chatPageStyles from '../ChatPage.module.css';
 import type { ChatMessage } from '../../../types';
 import { Icon } from '../../../components/ui/icons';
 
 export function MessageList({ messages }: { messages: ChatMessage[] }) {
   return (
-    <div className="message-list">
+    <div className={`message-list ${chatPageStyles.moduleAnchor}`}>
       {messages.length === 0 ? (
         <div className="empty-state">
           <span className="empty-state-kicker"><Icon name="sparkles" size={14} /> No review yet</span>

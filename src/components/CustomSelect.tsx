@@ -1,4 +1,5 @@
 import { useId } from 'react';
+import customSelectStyles from './CustomSelect.module.css';
 import { useCustomSelect, type SelectOption } from '../hooks/useCustomSelect';
 
 type CustomSelectProps = {
@@ -32,7 +33,7 @@ export function CustomSelect({
   return (
     <div
       ref={rootRef}
-      className={`custom-select ${className}`.trim()}
+      className={`custom-select ${customSelectStyles.moduleAnchor} ${className}`.trim()}
       data-open={isOpen ? 'true' : 'false'}
       data-disabled={disabled ? 'true' : 'false'}
     >
