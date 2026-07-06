@@ -12,6 +12,7 @@ import { serializeExcalidrawFile } from '../../../lib/excalidrawFile';
 import { appStorage } from '../../../lib/storage';
 import { workspaceProviderFactory } from '../../../lib/workspace/factory';
 import { getWorkspaceResourceKey } from '../../../lib/workspace/types';
+import { useAppDialogs } from '../../../components/ui/useAppDialogs';
 import type {
   WorkspaceEntry,
   WorkspaceFileId,
@@ -21,6 +22,7 @@ import type {
 } from '../../../lib/workspace/types';
 import { createLocalDraftRecord } from '../../../lib/workspace/untitled';
 import type { DiagramSnapshot } from '../../../types';
+import { WORKSPACE_TAB_DIALOG_COPY } from './workspaceTabDialog.constants';
 
 type WorkspaceDocumentRecord = {
   snapshot: DiagramSnapshot | null;
@@ -46,11 +48,11 @@ type WorkspaceTabManagerContextValue = {
   openEntryAsTab: (entry: WorkspaceEntry) => Promise<void>;
   openUntitledTab: () => void;
   switchTab: (tabId: WorkspaceFileId) => void;
-  closeTab: (tabId: WorkspaceFileId) => void;
-  closeActiveTab: () => void;
+  closeTab: (tabId: WorkspaceFileId) => Promise<void>;
+  closeActiveTab: () => Promise<void>;
   closeSavedTabs: () => void;
-  closeAllTabs: () => void;
-  clearActiveCanvasContents: () => void;
+  closeAllTabs: () => Promise<void>;
+  clearActiveCanvasContents: () => Promise<void>;
   saveTab: (tabId: WorkspaceFileId) => Promise<void>;
   saveActiveTab: () => Promise<void>;
   setWorkspaceSaveTarget: (target: WorkspaceSaveTarget) => void;
@@ -100,14 +102,16 @@ function createAbortError() {
   return new DOMException('Save cancelled.', 'AbortError');
 }
 
-function promptForWorkspaceFileName(suggestedName: string) {
-  const fileName = window.prompt('Save this untitled diagram inside the opened workspace folder as:', suggestedName);
-  if (!fileName) throw createAbortError();
-  return fileName;
-}
-
 function createSnapshotFingerprint(snapshot: DiagramSnapshot | null) {
   return snapshot ? serializeExcalidrawFile(snapshot) : null;
+}
+
+function validateWorkspaceFileName(fileName: string) {
+  const copy = WORKSPACE_TAB_DIALOG_COPY.saveUntitledFile;
+  const trimmedFileName = fileName.trim();
+  if (trimmedFileName.length === 0) return copy.emptyError;
+  if (/[\\/]/.test(trimmedFileName)) return copy.separatorError;
+  return null;
 }
 
 function createDocumentRecord(snapshot: DiagramSnapshot | null): WorkspaceDocumentRecord {
@@ -160,6 +164,7 @@ function getEmptyUntitledSaveMessage() {
 const WorkspaceTabManagerContext = createContext<WorkspaceTabManagerContextValue | null>(null);
 
 export function WorkspaceTabManagerProvider({ children }: { children: ReactNode }) {
+  const { confirm, prompt, dialogs } = useAppDialogs();
   const initialLocalDrafts = useMemo(() => appStorage.loadLocalDrafts(), []);
   const initialLocalDraftTabs = useMemo(() => initialLocalDrafts.map((draft) => createUntitledTab(draft)), [initialLocalDrafts]);
   const documentRecordByTabIdRef = useRef(new Map<WorkspaceFileId, WorkspaceDocumentRecord>(
@@ -364,16 +369,22 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
     setTabs(nextTabs);
   }, []);
 
-  const closeTab = useCallback((tabId: WorkspaceFileId) => {
+  const closeTab = useCallback(async (tabId: WorkspaceFileId) => {
     const tab = tabsRef.current.find((candidate) => candidate.id === tabId);
     if (!tab) return;
-    if (hasUnsavedWorkspaceTabChanges(tab) && !window.confirm(`Close ${tab.title} without saving?`)) return;
+    if (hasUnsavedWorkspaceTabChanges(tab)) {
+      const shouldClose = await confirm({
+        ...WORKSPACE_TAB_DIALOG_COPY.closeDirtyTab(tab),
+        variant: 'danger',
+      });
+      if (!shouldClose) return;
+    }
     closeTabs(new Set([tabId]));
-  }, [closeTabs]);
+  }, [closeTabs, confirm]);
 
-  const closeActiveTab = useCallback(() => {
+  const closeActiveTab = useCallback(async () => {
     const activeTabId = activeTabIdRef.current;
-    if (activeTabId) closeTab(activeTabId);
+    if (activeTabId) await closeTab(activeTabId);
   }, [closeTab]);
 
   const closeSavedTabs = useCallback(() => {
@@ -383,26 +394,31 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
     closeTabs(new Set(savedTabIds));
   }, [closeTabs]);
 
-  const closeAllTabs = useCallback(() => {
+  const closeAllTabs = useCallback(async () => {
     const currentTabs = tabsRef.current;
     if (currentTabs.length === 0) return;
 
     const unsavedTabs = currentTabs.filter(hasUnsavedWorkspaceTabChanges);
     if (unsavedTabs.length > 0) {
-      const message = unsavedTabs.length === 1
-        ? `Close ${unsavedTabs[0].title} without saving?`
-        : `Close all ${currentTabs.length} tabs? ${unsavedTabs.length} tabs have unsaved changes.`;
-      if (!window.confirm(message)) return;
+      const shouldClose = await confirm({
+        ...WORKSPACE_TAB_DIALOG_COPY.closeAllTabs(currentTabs.length, unsavedTabs.length, unsavedTabs[0]),
+        variant: 'danger',
+      });
+      if (!shouldClose) return;
     }
 
     closeTabs(new Set(currentTabs.map((tab) => tab.id)));
-  }, [closeTabs]);
+  }, [closeTabs, confirm]);
 
-  const clearActiveCanvasContents = useCallback(() => {
+  const clearActiveCanvasContents = useCallback(async () => {
     const activeTabId = activeTabIdRef.current;
     const activeTab = tabsRef.current.find((candidate) => candidate.id === activeTabId);
     if (!activeTab || activeTab.loadState !== 'loaded' || !activeTab.isSupported) return;
-    if (!window.confirm(`Clear the canvas contents in ${activeTab.title}? Other tabs will not be changed.`)) return;
+    const shouldClear = await confirm({
+      ...WORKSPACE_TAB_DIALOG_COPY.clearCanvas(activeTab),
+      variant: 'danger',
+    });
+    if (!shouldClear) return;
 
     const currentRecord = documentRecordByTabIdRef.current.get(activeTab.id) ?? createDocumentRecord(null);
     const nextSnapshot = createClearedSnapshot(currentRecord.snapshot);
@@ -417,7 +433,7 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
     snapshotRef.current = nextSnapshot;
     setDocumentVersionBump((current) => current + 1);
     setTabSaveState(activeTab.id, resolveSnapshotSaveState(nextSnapshot, nextRecord.savedFingerprint));
-  }, [setTabSaveState]);
+  }, [confirm, setTabSaveState]);
 
   const saveTab = useCallback(async (tabId: WorkspaceFileId) => {
     const tab = tabsRef.current.find((candidate) => candidate.id === tabId);
@@ -442,15 +458,26 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
       const savedFingerprint = createSnapshotFingerprint(snapshot);
 
       if (tab.isUntitled) {
-        const provider = workspaceSaveTarget.root
-          ? workspaceProviderFactory.getProvider(workspaceSaveTarget.root.providerKind)
-          : workspaceProviderFactory.getDefaultProvider();
-        const createDocument = workspaceSaveTarget.root
-          ? provider.createDocument?.bind(provider, workspaceSaveTarget.root, promptForWorkspaceFileName(tab.title))
-          : provider.createFileDocument?.bind(provider, tab.title);
-        if (!createDocument) throw new Error('This environment cannot save files.');
+        const { document, entry } = await (async () => {
+          const workspaceRoot = workspaceSaveTarget.root;
+          if (!workspaceRoot) {
+            const provider = workspaceProviderFactory.getDefaultProvider();
+            if (!provider.createFileDocument) throw new Error('This environment cannot save files.');
+            return provider.createFileDocument(tab.title, snapshot);
+          }
 
-        const { document, entry } = await createDocument(snapshot);
+          const provider = workspaceProviderFactory.getProvider(workspaceRoot.providerKind);
+          if (!provider.createDocument) throw new Error('This environment cannot save files.');
+
+          const fileName = await prompt({
+            ...WORKSPACE_TAB_DIALOG_COPY.saveUntitledFile,
+            defaultValue: tab.title,
+            validate: validateWorkspaceFileName,
+          });
+          if (!fileName) throw createAbortError();
+          return provider.createDocument(workspaceRoot, fileName, snapshot);
+        })();
+
         const currentRecord = documentRecordByTabIdRef.current.get(tabId) ?? createDocumentRecord(null);
         documentRecordByTabIdRef.current.delete(tabId);
         documentRecordByTabIdRef.current.set(document.id, {
@@ -532,7 +559,7 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
         ),
       );
     }
-  }, [setTabSaveError]);
+  }, [prompt, setTabSaveError]);
 
   const saveActiveTab = useCallback(async () => {
     const activeTabId = activeTabIdRef.current;
@@ -583,6 +610,7 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
   return (
     <WorkspaceTabManagerContext.Provider value={value}>
       {children}
+      {dialogs}
     </WorkspaceTabManagerContext.Provider>
   );
 }

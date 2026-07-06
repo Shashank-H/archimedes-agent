@@ -89,7 +89,7 @@ function WorkspaceTabOptionsMenu({
         <DropdownMenu.Item
           className="workspace-tabs-menu-item"
           disabled={!canClearActiveCanvas}
-          onSelect={() => onClearActiveCanvas()}
+          onSelect={() => void onClearActiveCanvas()}
         >
           Clear active canvas
         </DropdownMenu.Item>
@@ -97,7 +97,7 @@ function WorkspaceTabOptionsMenu({
         <DropdownMenu.Item
           className="workspace-tabs-menu-item"
           disabled={!activeTab}
-          onSelect={() => onCloseActiveTab()}
+          onSelect={() => void onCloseActiveTab()}
         >
           Close active tab
         </DropdownMenu.Item>
@@ -111,7 +111,7 @@ function WorkspaceTabOptionsMenu({
         <DropdownMenu.Item
           className="workspace-tabs-menu-item is-danger"
           disabled={!hasTabs}
-          onSelect={() => onCloseAllTabs()}
+          onSelect={() => void onCloseAllTabs()}
         >
           Close all tabs
         </DropdownMenu.Item>
@@ -194,7 +194,7 @@ export function WorkspaceTabs({
                 className="workspace-tab-close"
                 onClick={(event) => {
                   event.stopPropagation();
-                  onCloseTab(tab.id);
+                  void onCloseTab(tab.id);
                 }}
                 aria-label={`Close ${tab.title}`}
               >

@@ -97,9 +97,7 @@ export class NativeWorkspaceProvider implements WorkspaceDataProvider {
     let result = await invoke<NativeOpenRootDto | null>('open_workspace_root');
 
     if (!result) {
-      const rootPath = window.prompt('Enter the absolute folder path to open as a workspace:');
-      if (!rootPath) throw new Error('No folder selected.');
-      return this.openRootAt(rootPath);
+      throw new Error('No workspace folder selected.');
     }
 
     return toOpenRootResult(result);
