@@ -16,7 +16,7 @@ export type WorkspaceContextValue = {
   treeError: string | null;
   setDiagramApi: (api: ExcalidrawApi) => void;
   handleSettingsChange: (settings: AppSettings) => void;
-  openWorkspaceRoot: () => Promise<void>;
+  openWorkspaceRoot: () => Promise<WorkspaceRoot | null>;
   refreshWorkspaceRoot: () => Promise<void>;
   toggleDirectory: (entry: WorkspaceEntry) => Promise<void>;
   selectEntry: (entry: WorkspaceEntry) => Promise<void>;

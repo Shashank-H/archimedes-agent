@@ -15,7 +15,7 @@ pub struct WorkspaceRootDto {
 #[derive(Clone, Serialize)]
 pub struct WorkspaceEntryDto {
     pub id: String,
-    pub root_id: String,
+    pub root_id: Option<String>,
     pub kind: String,
     pub name: String,
     pub path: String,
@@ -42,14 +42,26 @@ pub fn create_root(path: &Path) -> WorkspaceRootDto {
     }
 }
 
-pub fn list_children(root: &WorkspaceRootDto, directory: &Path, parent_id: Option<String>) -> Result<Vec<WorkspaceEntryDto>, String> {
+pub fn list_children(
+    root: &WorkspaceRootDto,
+    directory: &Path,
+    parent_id: Option<String>,
+) -> Result<Vec<WorkspaceEntryDto>, String> {
     let mut entries = Vec::new();
 
-    for entry in fs::read_dir(directory).map_err(|error| format!("Could not list directory: {error}"))? {
+    for entry in
+        fs::read_dir(directory).map_err(|error| format!("Could not list directory: {error}"))?
+    {
         let entry = entry.map_err(|error| format!("Could not read directory entry: {error}"))?;
         let path = entry.path();
-        let metadata = entry.metadata().map_err(|error| format!("Could not read file metadata: {error}"))?;
-        let kind = if metadata.is_dir() { "directory" } else { "file" };
+        let metadata = entry
+            .metadata()
+            .map_err(|error| format!("Could not read file metadata: {error}"))?;
+        let kind = if metadata.is_dir() {
+            "directory"
+        } else {
+            "file"
+        };
         let name = entry.file_name().to_string_lossy().to_string();
         let display_path = path.to_string_lossy().to_string();
         let extension = extension_for_path(&path);
@@ -57,7 +69,7 @@ pub fn list_children(root: &WorkspaceRootDto, directory: &Path, parent_id: Optio
 
         entries.push(WorkspaceEntryDto {
             id: file_id_for_path(&path),
-            root_id: root.id.clone(),
+            root_id: Some(root.id.clone()),
             kind: kind.to_string(),
             name,
             path: display_path,
@@ -78,12 +90,32 @@ pub fn list_children(root: &WorkspaceRootDto, directory: &Path, parent_id: Optio
     Ok(entries)
 }
 
+pub fn file_entry(path: &Path, root_id: Option<String>) -> WorkspaceEntryDto {
+    let name = path
+        .file_name()
+        .map(|name| name.to_string_lossy().to_string())
+        .unwrap_or_else(|| path.to_string_lossy().to_string());
+    let display_path = path.to_string_lossy().to_string();
+
+    WorkspaceEntryDto {
+        id: file_id_for_path(path),
+        root_id,
+        kind: "file".to_string(),
+        name,
+        path: display_path.clone(),
+        parent_id: None,
+        extension: extension_for_path(&path.to_path_buf()),
+        is_supported: is_supported_diagram_path(&display_path),
+    }
+}
+
 fn extension_for_path(path: &PathBuf) -> Option<String> {
     let name = path.file_name()?.to_string_lossy().to_lowercase();
     if name.ends_with(".excalidraw.json") {
         Some(".excalidraw.json".to_string())
     } else {
-        path.extension().map(|extension| format!(".{}", extension.to_string_lossy()))
+        path.extension()
+            .map(|extension| format!(".{}", extension.to_string_lossy()))
     }
 }
 
