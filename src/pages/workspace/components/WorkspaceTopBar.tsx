@@ -16,7 +16,7 @@ type WorkspaceTopBarProps = {
   isAssistantCollapsed: boolean;
   onToggleExplorer: () => void;
   onToggleAssistant: () => void;
-  onOpenWorkspaceRoot: () => void | Promise<void>;
+  onOpenWorkspaceRoot: () => void | Promise<unknown>;
   onOpenUntitledTab: () => void;
   onSaveActiveTab: () => void | Promise<void>;
   onReview: () => void;

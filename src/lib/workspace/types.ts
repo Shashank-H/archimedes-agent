@@ -23,7 +23,7 @@ export type WorkspaceRoot = {
 
 export type WorkspaceEntry = {
   id: WorkspaceFileId;
-  rootId: WorkspaceRootId;
+  rootId: WorkspaceRootId | null;
   providerKind: WorkspaceProviderKind;
   kind: WorkspaceEntryKind;
   name: string;
@@ -86,6 +86,7 @@ export type WorkspaceDataProvider = {
   readDocument: (entry: WorkspaceEntry) => Promise<WorkspaceDocument>;
   writeDocument: (document: WorkspaceDocument, snapshot: DiagramSnapshot) => Promise<void>;
   createDocument?: (root: WorkspaceRoot, suggestedName: string, snapshot: DiagramSnapshot) => Promise<WorkspaceCreateDocumentResult>;
+  createFileDocument?: (suggestedName: string, snapshot: DiagramSnapshot) => Promise<WorkspaceCreateDocumentResult>;
 };
 
 export type WorkspaceResourceIdentity = Pick<WorkspaceEntry | WorkspaceDocument | WorkspaceTab, 'providerKind' | 'rootId' | 'path'>;

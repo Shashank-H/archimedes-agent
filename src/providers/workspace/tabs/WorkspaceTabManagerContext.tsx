@@ -441,18 +441,24 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
       const workspaceSaveTarget = workspaceSaveTargetRef.current;
       const savedFingerprint = createSnapshotFingerprint(snapshot);
 
-      if (tab.isUntitled && workspaceSaveTarget.root) {
-        const provider = workspaceProviderFactory.getProvider(workspaceSaveTarget.root.providerKind);
-        if (!provider.createDocument) throw new Error('This workspace cannot create files.');
+      if (tab.isUntitled) {
+        const provider = workspaceSaveTarget.root
+          ? workspaceProviderFactory.getProvider(workspaceSaveTarget.root.providerKind)
+          : workspaceProviderFactory.getDefaultProvider();
+        const createDocument = workspaceSaveTarget.root
+          ? provider.createDocument?.bind(provider, workspaceSaveTarget.root, promptForWorkspaceFileName(tab.title))
+          : provider.createFileDocument?.bind(provider, tab.title);
+        if (!createDocument) throw new Error('This environment cannot save files.');
 
-        const fileName = promptForWorkspaceFileName(tab.title);
-        const { document, entry } = await provider.createDocument(workspaceSaveTarget.root, fileName, snapshot);
+        const { document, entry } = await createDocument(snapshot);
         const currentRecord = documentRecordByTabIdRef.current.get(tabId) ?? createDocumentRecord(null);
         documentRecordByTabIdRef.current.delete(tabId);
         documentRecordByTabIdRef.current.set(document.id, {
           ...currentRecord,
+          snapshot,
           savedFingerprint,
           renderVersion: currentRecord.renderVersion + 1,
+          hasReceivedCanvasChange: false,
         });
         appStorage.deleteLocalDraft(tabId);
         activeTabIdRef.current = document.id;
@@ -474,7 +480,9 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
               : candidate,
           ),
         );
-        await workspaceSaveTarget.onWorkspaceFileCreated(entry);
+        if (entry.rootId) {
+          await workspaceSaveTarget.onWorkspaceFileCreated(entry);
+        }
         return;
       }
 

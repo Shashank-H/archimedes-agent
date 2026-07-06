@@ -1,5 +1,5 @@
 import { listen } from '@tauri-apps/api/event';
-import { useCallback, useEffect, useRef, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { nativeWorkspaceProvider } from '../../lib/workspace/native';
 import { isSupportedDiagramPath } from '../../lib/workspace/types';
 import type { WorkspaceEntry, WorkspaceRoot } from '../../lib/workspace/types';
@@ -55,7 +55,7 @@ function WorkspaceContextProvider({ children }: { children: ReactNode }) {
   const apiRef = useRef<ExcalidrawApi | null>(null);
   const { settings, handleSettingsChange } = useWorkspaceSettings();
   const tree = useWorkspaceTree();
-  const { openEntryAsTab, setWorkspaceSaveTarget } = useWorkspaceTabManager();
+  const { tabs, activeTab, openEntryAsTab, setWorkspaceSaveTarget } = useWorkspaceTabManager();
 
   const setDiagramApi = useCallback((api: ExcalidrawApi) => {
     apiRef.current = api;
@@ -136,6 +136,18 @@ function WorkspaceContextProvider({ children }: { children: ReactNode }) {
     });
   }, [setWorkspaceSaveTarget, tree]);
 
+  const shouldOpenNativeWorkspaceInNewWindow = useMemo(() => (
+    !tree.root
+    && tabs.length === 1
+    && activeTab?.providerKind === 'native'
+    && !activeTab.rootId
+    && !activeTab.isUntitled
+  ), [activeTab, tabs.length, tree.root]);
+
+  const openWorkspaceRoot = useCallback(() => (
+    tree.openWorkspaceRoot({ openInNewNativeWindow: shouldOpenNativeWorkspaceInNewWindow })
+  ), [shouldOpenNativeWorkspaceInNewWindow, tree]);
+
   return (
     <WorkspaceContext.Provider
       value={{
@@ -148,7 +160,7 @@ function WorkspaceContextProvider({ children }: { children: ReactNode }) {
         treeError: tree.treeError,
         setDiagramApi,
         handleSettingsChange,
-        openWorkspaceRoot: tree.openWorkspaceRoot,
+        openWorkspaceRoot,
         refreshWorkspaceRoot: tree.refreshWorkspaceRoot,
         toggleDirectory: tree.toggleDirectory,
         selectEntry,

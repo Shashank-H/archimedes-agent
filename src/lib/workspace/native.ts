@@ -13,7 +13,7 @@ import { isSupportedDiagramPath } from './types';
 
 type NativeWorkspaceEntryDto = {
   id: string;
-  root_id: string;
+  root_id: string | null;
   kind: 'file' | 'directory';
   name: string;
   path: string;
@@ -76,6 +76,14 @@ function toExcalidrawFileName(name: string) {
   return isSupportedDiagramPath(baseName) ? baseName : `${baseName}.excalidraw`;
 }
 
+function withExcalidrawExtension(path: string) {
+  return isSupportedDiagramPath(path) ? path : `${path}.excalidraw`;
+}
+
+function basename(path: string) {
+  return path.replace(/\\/g, '/').split('/').filter(Boolean).pop() ?? path;
+}
+
 export class NativeWorkspaceProvider implements WorkspaceDataProvider {
   readonly kind = 'native' as const;
   readonly capabilities = {
@@ -107,10 +115,16 @@ export class NativeWorkspaceProvider implements WorkspaceDataProvider {
     return toOpenRootResult(result);
   }
 
+  async openRootInNewWindow(): Promise<void> {
+    const rootPath = window.prompt('Enter the absolute folder path to open in a new window:');
+    if (!rootPath) throw new DOMException('Open cancelled.', 'AbortError');
+    await invoke('open_workspace_path_in_new_window', { requestedPath: rootPath });
+  }
+
   async openPath(path: string): Promise<NativeOpenWorkspacePathResult> {
     const result = await invoke<NativeOpenPathDto>('open_workspace_path', { requestedPath: path });
 
-    if (result.status !== 'opened' || !result.root) {
+    if (result.status !== 'opened') {
       return {
         status: result.status,
         kind: result.kind ?? undefined,
@@ -122,11 +136,12 @@ export class NativeWorkspaceProvider implements WorkspaceDataProvider {
       };
     }
 
+    const rootResult = result.root ? toOpenRootResult(result.root) : { root: null, children: [] };
     return {
       status: 'opened',
       kind: result.kind ?? undefined,
       path: result.path,
-      ...toOpenRootResult(result.root),
+      ...rootResult,
       targetEntry: result.target_entry ? toEntry(result.target_entry) : null,
       message: result.message ?? undefined,
     };
@@ -176,12 +191,47 @@ export class NativeWorkspaceProvider implements WorkspaceDataProvider {
   }
 
   async writeDocument(document: WorkspaceDocument, snapshot: DiagramSnapshot): Promise<void> {
-    if (!document.rootId) throw new Error('Cannot save a native document without a workspace root.');
     await invoke('write_workspace_file', {
       fileId: document.id,
       rootId: document.rootId,
       content: serializeExcalidrawFile(snapshot),
     });
+  }
+
+  async createFileDocument(suggestedName: string, snapshot: DiagramSnapshot) {
+    const suggestedPath = withExcalidrawExtension(suggestedName.trim() || 'local-draft');
+    const selectedPath = window.prompt('Save this diagram as an absolute file path:', suggestedPath);
+    if (!selectedPath) throw new DOMException('Save cancelled.', 'AbortError');
+
+    const path = withExcalidrawExtension(selectedPath);
+    const title = basename(path);
+    const id = `native://${path}` as WorkspaceEntry['id'];
+    const document: WorkspaceDocument = {
+      id,
+      providerKind: this.kind,
+      rootId: null,
+      title,
+      path,
+      snapshot,
+      isUntitled: false,
+      isSupported: true,
+    };
+    await this.writeDocument(document, snapshot);
+
+    return {
+      document,
+      entry: {
+        id,
+        rootId: null,
+        providerKind: this.kind,
+        kind: 'file' as const,
+        name: title,
+        path,
+        parentId: null,
+        extension: extensionFor(title),
+        isSupported: true,
+      },
+    };
   }
 
   async createDocument(root: WorkspaceRoot, suggestedName: string, snapshot: DiagramSnapshot) {

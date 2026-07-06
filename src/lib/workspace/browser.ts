@@ -62,6 +62,10 @@ function hasFileSystemAccessApi() {
   return typeof window !== 'undefined' && 'showDirectoryPicker' in window && typeof indexedDB !== 'undefined';
 }
 
+function hasSaveFilePicker() {
+  return typeof window !== 'undefined' && 'showSaveFilePicker' in window;
+}
+
 function extensionFor(name: string) {
   const match = name.match(/(\.excalidraw\.json|\.[^.]+)$/i);
   return match?.[1];
@@ -90,7 +94,7 @@ export class BrowserWorkspaceProvider implements WorkspaceDataProvider {
   readonly kind = 'browser' as const;
   readonly capabilities = {
     canOpenDirectory: hasFileSystemAccessApi(),
-    canWrite: hasFileSystemAccessApi(),
+    canWrite: hasFileSystemAccessApi() || hasSaveFilePicker(),
     canRefresh: hasFileSystemAccessApi(),
     canWatch: false,
   };
@@ -161,6 +165,57 @@ export class BrowserWorkspaceProvider implements WorkspaceDataProvider {
     const writable = await handle.createWritable();
     await writable.write(serializeExcalidrawFile(snapshot));
     await writable.close();
+  }
+
+  async createFileDocument(suggestedName: string, snapshot: DiagramSnapshot) {
+    if (!hasSaveFilePicker()) throw new Error('This browser does not support saving directly to a file.');
+
+    const picker = (window as typeof window & {
+      showSaveFilePicker: (options?: {
+        suggestedName?: string;
+        types?: Array<{ description: string; accept: Record<string, string[]> }>;
+      }) => Promise<FileHandle>;
+    }).showSaveFilePicker;
+    const fileName = toExcalidrawFileName(suggestedName);
+    const fileHandle = await picker({
+      suggestedName: fileName,
+      types: [
+        {
+          description: 'Excalidraw files',
+          accept: { 'application/json': ['.excalidraw', '.excalidraw.json'] },
+        },
+      ],
+    });
+    const id = `browser://file-${Date.now()}` as WorkspaceFileId;
+    browserHandles.set(id, fileHandle);
+    browserHandlePaths.set(id, fileHandle.name);
+
+    const document: WorkspaceDocument = {
+      id,
+      providerKind: this.kind,
+      rootId: null,
+      title: fileHandle.name,
+      path: fileHandle.name,
+      snapshot,
+      isUntitled: false,
+      isSupported: true,
+    };
+    await this.writeDocument(document, snapshot);
+
+    return {
+      document,
+      entry: {
+        id,
+        rootId: null,
+        providerKind: this.kind,
+        kind: 'file' as const,
+        name: fileHandle.name,
+        path: fileHandle.name,
+        parentId: null,
+        extension: extensionFor(fileHandle.name),
+        isSupported: true,
+      },
+    };
   }
 
   async createDocument(root: WorkspaceRoot, suggestedName: string, snapshot: DiagramSnapshot) {

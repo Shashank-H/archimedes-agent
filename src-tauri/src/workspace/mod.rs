@@ -9,7 +9,7 @@ mod platform;
 mod provider;
 
 use path::{canonicalize_inside_root, canonicalize_parent_inside_root, path_from_file_id};
-use provider::{create_root, list_children, OpenWorkspaceRootDto, WorkspaceEntryDto};
+use provider::{create_root, file_entry, list_children, OpenWorkspaceRootDto, WorkspaceEntryDto};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State, WebviewWindow, WebviewWindowBuilder};
 
@@ -32,7 +32,11 @@ impl WorkspaceState {
         }
     }
 
-    pub fn queue_open_paths_for_window(&self, window_label: &str, paths: Vec<String>) -> Result<(), String> {
+    pub fn queue_open_paths_for_window(
+        &self,
+        window_label: &str,
+        paths: Vec<String>,
+    ) -> Result<(), String> {
         if paths.is_empty() {
             return Ok(());
         }
@@ -51,10 +55,16 @@ impl WorkspaceState {
             .pending_open_paths_by_window
             .lock()
             .map_err(|_| "Native open request queue lock was poisoned".to_string())?;
-        Ok(pending_paths_by_window.remove(window_label).unwrap_or_default())
+        Ok(pending_paths_by_window
+            .remove(window_label)
+            .unwrap_or_default())
     }
 
-    fn set_window_workspace_root(&self, window_label: String, root_path: Option<PathBuf>) -> Result<(), String> {
+    fn set_window_workspace_root(
+        &self,
+        window_label: String,
+        root_path: Option<PathBuf>,
+    ) -> Result<(), String> {
         let mut window_workspace_roots = self
             .window_workspace_roots
             .lock()
@@ -108,7 +118,9 @@ pub struct OpenWorkspacePathDto {
 }
 
 #[tauri::command]
-pub fn open_workspace_root(state: State<'_, WorkspaceState>) -> Result<Option<OpenWorkspaceRootDto>, String> {
+pub fn open_workspace_root(
+    state: State<'_, WorkspaceState>,
+) -> Result<Option<OpenWorkspaceRootDto>, String> {
     let Some(selected_path) = platform::pick_directory() else {
         return Ok(None);
     };
@@ -147,7 +159,11 @@ pub fn register_window_workspace_root(
     root_path: Option<String>,
 ) -> Result<(), String> {
     let canonical_root = root_path
-        .map(|path| PathBuf::from(path).canonicalize().map_err(|error| format!("Could not resolve workspace folder: {error}")))
+        .map(|path| {
+            PathBuf::from(path)
+                .canonicalize()
+                .map_err(|error| format!("Could not resolve workspace folder: {error}"))
+        })
         .transpose()?;
 
     state.set_window_workspace_root(window.label().to_string(), canonical_root)
@@ -156,6 +172,14 @@ pub fn register_window_workspace_root(
 #[tauri::command]
 pub fn create_new_workspace_window(app: AppHandle) -> Result<(), String> {
     create_empty_workspace_window(&app)
+}
+
+#[tauri::command]
+pub fn open_workspace_path_in_new_window(
+    app: AppHandle,
+    requested_path: String,
+) -> Result<(), String> {
+    create_window_for_native_open_path(&app, requested_path)
 }
 
 fn open_workspace_root_from_path(
@@ -219,24 +243,18 @@ fn open_workspace_path_from_path(
             path: canonical_path.to_string_lossy().to_string(),
             root: None,
             target_entry: None,
-            message: Some("Archimedes can open .excalidraw and .excalidraw.json files.".to_string()),
+            message: Some(
+                "Archimedes can open .excalidraw and .excalidraw.json files.".to_string(),
+            ),
         });
     }
-
-    let parent = canonical_path
-        .parent()
-        .ok_or_else(|| "Selected file has no parent folder.".to_string())?
-        .to_path_buf();
-    let root = register_workspace_root(&state, parent)?;
-    let target_id = path::file_id_for_path(&canonical_path);
-    let target_entry = root.children.iter().find(|entry| entry.id == target_id).cloned();
 
     Ok(OpenWorkspacePathDto {
         status: "opened".to_string(),
         kind: Some("file".to_string()),
         path: canonical_path.to_string_lossy().to_string(),
-        root: Some(root),
-        target_entry,
+        root: None,
+        target_entry: Some(file_entry(&canonical_path, None)),
         message: None,
     })
 }
@@ -273,15 +291,25 @@ pub fn list_workspace_children(
 #[tauri::command]
 pub fn read_workspace_file(
     state: State<'_, WorkspaceState>,
-    root_id: String,
+    root_id: Option<String>,
     file_id: String,
 ) -> Result<String, String> {
-    let root_path = get_root_path(&state, &root_id)?;
     let file_path = path_from_file_id(&file_id)?;
-    let safe_file_path = canonicalize_inside_root(&root_path, &file_path)?;
+    let safe_file_path = if let Some(root_id) = root_id {
+        let root_path = get_root_path(&state, &root_id)?;
+        canonicalize_inside_root(&root_path, &file_path)?
+    } else {
+        file_path
+            .canonicalize()
+            .map_err(|error| format!("Could not resolve file: {error}"))?
+    };
 
     if !safe_file_path.is_file() {
         return Err("Workspace path is not a file".to_string());
+    }
+
+    if !provider::is_supported_diagram_path(&safe_file_path.to_string_lossy()) {
+        return Err("Archimedes can open .excalidraw and .excalidraw.json files.".to_string());
     }
 
     fs::read_to_string(&safe_file_path).map_err(|error| format!("Could not read file: {error}"))
@@ -290,17 +318,37 @@ pub fn read_workspace_file(
 #[tauri::command]
 pub fn write_workspace_file(
     state: State<'_, WorkspaceState>,
-    root_id: String,
+    root_id: Option<String>,
     file_id: String,
     content: String,
 ) -> Result<(), String> {
-    let root_path = get_root_path(&state, &root_id)?;
     let file_path = path_from_file_id(&file_id)?;
-    let safe_file_path = if file_path.exists() {
-        canonicalize_inside_root(&root_path, &file_path)?
+    let safe_file_path = if let Some(root_id) = root_id {
+        let root_path = get_root_path(&state, &root_id)?;
+        if file_path.exists() {
+            canonicalize_inside_root(&root_path, &file_path)?
+        } else {
+            canonicalize_parent_inside_root(&root_path, &file_path)?
+        }
+    } else if file_path.exists() {
+        file_path
+            .canonicalize()
+            .map_err(|error| format!("Could not resolve file: {error}"))?
     } else {
-        canonicalize_parent_inside_root(&root_path, &file_path)?
+        let parent = file_path
+            .parent()
+            .ok_or_else(|| "Selected file has no parent folder.".to_string())?
+            .canonicalize()
+            .map_err(|error| format!("Could not resolve parent folder: {error}"))?;
+        let file_name = file_path
+            .file_name()
+            .ok_or_else(|| "Selected file has no filename.".to_string())?;
+        parent.join(file_name)
     };
+
+    if !provider::is_supported_diagram_path(&safe_file_path.to_string_lossy()) {
+        return Err("Archimedes can save .excalidraw and .excalidraw.json files.".to_string());
+    }
 
     fs::write(&safe_file_path, content).map_err(|error| format!("Could not write file: {error}"))
 }
@@ -338,8 +386,12 @@ pub fn queue_native_open_paths_for_window(
 
     let state = app.state::<WorkspaceState>();
     state.queue_open_paths_for_window(window_label, paths.clone())?;
-    app.emit_to(window_label, NATIVE_OPEN_REQUESTED_EVENT, NativeOpenRequestedDto { paths })
-        .map_err(|error| format!("Could not emit native open request: {error}"))
+    app.emit_to(
+        window_label,
+        NATIVE_OPEN_REQUESTED_EVENT,
+        NativeOpenRequestedDto { paths },
+    )
+    .map_err(|error| format!("Could not emit native open request: {error}"))
 }
 
 fn route_native_open_path(app: &AppHandle, path: String) -> Result<(), String> {
@@ -420,13 +472,21 @@ where
                 return None;
             }
             let path = PathBuf::from(&text);
-            let resolved_path = if path.is_absolute() { path } else { cwd.join(path) };
+            let resolved_path = if path.is_absolute() {
+                path
+            } else {
+                cwd.join(path)
+            };
             Some(resolved_path.to_string_lossy().to_string())
         })
         .collect()
 }
 
-fn is_current_exe_arg(arg: &OsString, current_exe: Option<&Path>, current_exe_name: Option<&std::ffi::OsStr>) -> bool {
+fn is_current_exe_arg(
+    arg: &OsString,
+    current_exe: Option<&Path>,
+    current_exe_name: Option<&std::ffi::OsStr>,
+) -> bool {
     let arg_path = PathBuf::from(arg);
 
     if let Some(current_exe) = current_exe {

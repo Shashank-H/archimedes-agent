@@ -69,33 +69,60 @@ export function useWorkspaceTree() {
     };
   }, [applyRootResult]);
 
-  const openWorkspaceRoot = useCallback(async () => {
+  const openWorkspaceRoot = useCallback(async (options: { openInNewNativeWindow?: boolean } = {}) => {
+    const provider = workspaceProviderFactory.getDefaultProvider();
+    if (options.openInNewNativeWindow && provider.kind === 'native') {
+      setIsOpeningRoot(true);
+      setTreeError(null);
+      try {
+        await nativeWorkspaceProvider.openRootInNewWindow();
+      } catch (error) {
+        setTreeError(toErrorMessage(error));
+      } finally {
+        setIsOpeningRoot(false);
+      }
+      return null;
+    }
+
+    if (root && provider.kind === 'browser' && !window.confirm('Opening another browser workspace will replace the folder shown in this window. Continue?')) {
+      return null;
+    }
+
     setIsOpeningRoot(true);
     setTreeError(null);
     try {
-      const provider = workspaceProviderFactory.getDefaultProvider();
       const result = await provider.openRoot();
       applyRootResult(result);
       saveRestorableRoot(result.root);
+      return result.root;
     } catch (error) {
       setTreeError(toErrorMessage(error));
+      return null;
     } finally {
       setIsOpeningRoot(false);
     }
-  }, [applyRootResult, saveRestorableRoot]);
+  }, [applyRootResult, root, saveRestorableRoot]);
 
   const openNativePath = useCallback(async (path: string): Promise<NativeOpenWorkspacePathResult | null> => {
     setIsOpeningRoot(true);
     setTreeError(null);
     try {
       const result = await nativeWorkspaceProvider.openPath(path);
-      if (result.status !== 'opened' || !result.root) {
+      if (result.status !== 'opened') {
         setTreeError(result.message ?? `Could not open ${path}.`);
         return result;
       }
 
-      applyRootResult({ root: result.root, children: result.children });
-      saveRestorableRoot(result.root);
+      if (result.root) {
+        applyRootResult({ root: result.root, children: result.children });
+        saveRestorableRoot(result.root);
+      } else {
+        setRoot(null);
+        setEntriesByParentId({});
+        setExpandedEntryIds(new Set());
+        setSelectedEntryId(null);
+        appStorage.deleteWorkspaceRoot();
+      }
       if (result.targetEntry) {
         setSelectedEntryId(result.targetEntry.id);
       }
