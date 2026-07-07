@@ -3,5 +3,14 @@
   "identifier": "default",
   "description": "Default app capability",
   "windows": ["main"],
-  "permissions": ["opener:default"]
+  "permissions": [
+    "opener:default",
+    {
+      "identifier": "http:default",
+      "allow": [
+        { "url": "https://auth.openai.com/**" },
+        { "url": "https://chatgpt.com/**" }
+      ]
+    }
+  ]
 }

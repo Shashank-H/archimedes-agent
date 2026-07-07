@@ -1,4 +1,5 @@
 import { CHATGPT_SUBSCRIPTION_DEFAULT_ENDPOINT, type AppSettings, type ChatGptSubscriptionCredentials, type LlmChatMessage } from '../../types';
+import { subscriptionFetch } from '../http/subscriptionFetch';
 import { BaseLlmProvider, type LlmModelOption, type StreamLlmChatArgs } from './base';
 import { codexModelSupportsVision, resolveCodexModelIds } from './codexModels';
 
@@ -85,7 +86,7 @@ function credentialsFromToken(token: OAuthToken): ChatGptSubscriptionCredentials
 
 async function fetchWithLoginCancellation(input: string, init: RequestInit): Promise<Response> {
   try {
-    return await fetch(input, init);
+    return await subscriptionFetch(input, init);
   } catch (error) {
     if (init.signal?.aborted) throw new Error('Login cancelled');
     throw error;
@@ -117,7 +118,7 @@ async function exchangeAuthorizationCode(code: string, verifier: string, redirec
 }
 
 export async function refreshOpenAICodexToken(refreshToken: string): Promise<ChatGptSubscriptionCredentials> {
-  const response = await fetch(TOKEN_URL, {
+  const response = await subscriptionFetch(TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: refreshToken, client_id: CLIENT_ID }),
@@ -307,7 +308,7 @@ export class ChatGptSubscriptionProvider extends BaseLlmProvider {
   async streamChat({ settings, messages, signal, onToken, onChatGptSubscriptionCredentialsRefreshed }: StreamLlmChatArgs) {
     const credentials = await freshCredentials(settings, onChatGptSubscriptionCredentialsRefreshed);
     const baseUrl = resolveSubscriptionApiBase(settings.endpoint);
-    const response = await fetch(`${baseUrl}/responses`, {
+    const response = await subscriptionFetch(`${baseUrl}/responses`, {
       method: 'POST',
       headers: authHeaders(credentials),
       signal,
@@ -355,7 +356,7 @@ export class ChatGptSubscriptionProvider extends BaseLlmProvider {
   async testConnection(settings: AppSettings) {
     const credentials = await freshCredentials(settings, undefined);
     const baseUrl = resolveSubscriptionApiBase(settings.endpoint);
-    const response = await fetch(`${baseUrl}/responses`, {
+    const response = await subscriptionFetch(`${baseUrl}/responses`, {
       method: 'POST',
       headers: authHeaders(credentials),
       body: JSON.stringify(
