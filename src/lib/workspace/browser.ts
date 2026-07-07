@@ -225,6 +225,12 @@ export class BrowserWorkspaceProvider implements WorkspaceDataProvider {
     await ensureReadWritePermission(rootHandle);
 
     const fileName = toExcalidrawFileName(suggestedName);
+    try {
+      await rootHandle.getFileHandle(fileName);
+      throw new Error(`A file named '${fileName}' already exists in this workspace folder. Choose a different file name.`);
+    } catch (error) {
+      if (!(error instanceof DOMException && error.name === 'NotFoundError')) throw error;
+    }
     const fileHandle = await rootHandle.getFileHandle(fileName, { create: true });
     const path = fileName;
     const id = `${root.id}/${path}` as WorkspaceFileId;
