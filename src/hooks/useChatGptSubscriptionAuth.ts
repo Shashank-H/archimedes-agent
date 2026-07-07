@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { loginOpenAICodexDeviceCode, type OpenAiCodexDeviceCodeInfo } from '../lib/llm/chatgptSubscription';
-import type { AppSettings, ChatGptSubscriptionCredentials } from '../types';
+import { CHATGPT_SUBSCRIPTION_DEFAULT_ENDPOINT, type AppSettings, type ChatGptSubscriptionCredentials } from '../types';
 
 type AuthStatus = 'idle' | 'waiting' | 'signed-in' | 'error';
 
@@ -28,7 +28,7 @@ export function useChatGptSubscriptionAuth(settings: AppSettings, onSettingsChan
       providerConfigurations: {
         ...settings.providerConfigurations,
         'chatgpt-subscription': {
-          ...(subscriptionConfiguration(settings) ?? { endpoint: 'https://api.openai.com/v1', apiKey: '', model: 'gpt-5-codex' }),
+          ...(subscriptionConfiguration(settings) ?? { endpoint: CHATGPT_SUBSCRIPTION_DEFAULT_ENDPOINT, apiKey: '', model: 'gpt-5-codex' }),
           chatGptSubscriptionCredentials: nextCredentials,
         },
       },

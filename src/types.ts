@@ -5,6 +5,8 @@ export type ThinkingLevel = 'off' | 'low' | 'medium' | 'high';
 export type AppTheme = 'light' | 'dark';
 export type LlmProvider = 'ollama' | 'openai-compatible' | 'chatgpt-subscription';
 
+export const CHATGPT_SUBSCRIPTION_DEFAULT_ENDPOINT = 'https://chatgpt.com/backend-api/codex';
+
 export type ChatGptSubscriptionCredentials = {
   access: string;
   refresh: string;
@@ -104,9 +106,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
       model: 'gpt-4o-mini',
     },
     'chatgpt-subscription': {
-      endpoint: 'https://api.openai.com/v1',
+      endpoint: CHATGPT_SUBSCRIPTION_DEFAULT_ENDPOINT,
       apiKey: '',
-      model: 'gpt-5-codex',
+      model: 'gpt-5.4',
       chatGptSubscriptionCredentials: null,
     },
   },

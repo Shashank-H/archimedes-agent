@@ -1,5 +1,6 @@
-import type { AppSettings, ChatGptSubscriptionCredentials, LlmChatMessage } from '../../types';
+import { CHATGPT_SUBSCRIPTION_DEFAULT_ENDPOINT, type AppSettings, type ChatGptSubscriptionCredentials, type LlmChatMessage } from '../../types';
 import { BaseLlmProvider, type LlmModelOption, type StreamLlmChatArgs } from './base';
+import { codexModelSupportsVision, resolveCodexModelIds } from './codexModels';
 
 const CLIENT_ID = 'app_EMoamEEZ73f0CkXaXp7hrann';
 const AUTH_BASE_URL = 'https://auth.openai.com';
@@ -37,6 +38,18 @@ type ChatGptJwtPayload = {
 
 function normalizeBaseUrl(endpoint: string) {
   return endpoint.replace(/\/+$/, '');
+}
+
+export function resolveSubscriptionApiBase(endpoint?: string) {
+  const candidate = normalizeBaseUrl(endpoint?.trim() || CHATGPT_SUBSCRIPTION_DEFAULT_ENDPOINT);
+  try {
+    const url = new URL(candidate);
+    const path = url.pathname.replace(/\/+$/, '');
+    if (url.hostname === 'api.openai.com' && path === '/v1') return CHATGPT_SUBSCRIPTION_DEFAULT_ENDPOINT;
+  } catch {
+    // Keep non-URL custom endpoints untouched; fetch will surface invalid values.
+  }
+  return candidate;
 }
 
 function decodeBase64Url(value: string) {
@@ -285,15 +298,15 @@ export class ChatGptSubscriptionProvider extends BaseLlmProvider {
   readonly metadata = {
     id: this.id,
     label: this.name,
-    defaultEndpoint: 'https://api.openai.com/v1',
-    defaultModel: 'gpt-5-codex',
+    defaultEndpoint: CHATGPT_SUBSCRIPTION_DEFAULT_ENDPOINT,
+    defaultModel: 'gpt-5.4',
     requiresApiKey: false,
     usesOAuth: true,
   } as const;
 
   async streamChat({ settings, messages, signal, onToken, onChatGptSubscriptionCredentialsRefreshed }: StreamLlmChatArgs) {
     const credentials = await freshCredentials(settings, onChatGptSubscriptionCredentialsRefreshed);
-    const baseUrl = normalizeBaseUrl(settings.endpoint);
+    const baseUrl = resolveSubscriptionApiBase(settings.endpoint);
     const response = await fetch(`${baseUrl}/responses`, {
       method: 'POST',
       headers: authHeaders(credentials),
@@ -330,19 +343,18 @@ export class ChatGptSubscriptionProvider extends BaseLlmProvider {
     }
   }
 
-  async listModels(_settings: AppSettings): Promise<LlmModelOption[]> {
-    return [
-      { value: 'gpt-5-codex', label: 'gpt-5-codex', supportsVision: true },
-      { value: 'gpt-5', label: 'gpt-5', supportsVision: true },
-      { value: 'gpt-5-mini', label: 'gpt-5-mini', supportsVision: true },
-      { value: 'o4-mini', label: 'o4-mini', supportsVision: true },
-      { value: 'gpt-4.1', label: 'gpt-4.1', supportsVision: true },
-    ];
+  async listModels(settings: AppSettings): Promise<LlmModelOption[]> {
+    const ids = await resolveCodexModelIds(settings);
+    return ids.map((value) => ({
+      value,
+      label: value,
+      supportsVision: codexModelSupportsVision(value),
+    }));
   }
 
   async testConnection(settings: AppSettings) {
     const credentials = await freshCredentials(settings, undefined);
-    const baseUrl = normalizeBaseUrl(settings.endpoint);
+    const baseUrl = resolveSubscriptionApiBase(settings.endpoint);
     const response = await fetch(`${baseUrl}/responses`, {
       method: 'POST',
       headers: authHeaders(credentials),

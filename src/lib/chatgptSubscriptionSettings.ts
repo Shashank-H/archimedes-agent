@@ -1,4 +1,4 @@
-import type { AppSettings, ChatGptSubscriptionCredentials } from '../types';
+import { CHATGPT_SUBSCRIPTION_DEFAULT_ENDPOINT, type AppSettings, type ChatGptSubscriptionCredentials } from '../types';
 
 export function mergeChatGptSubscriptionCredentials(
   settings: AppSettings,
@@ -10,7 +10,7 @@ export function mergeChatGptSubscriptionCredentials(
       ...settings.providerConfigurations,
       'chatgpt-subscription': {
         ...(settings.providerConfigurations['chatgpt-subscription'] ?? {
-          endpoint: 'https://api.openai.com/v1',
+          endpoint: CHATGPT_SUBSCRIPTION_DEFAULT_ENDPOINT,
           apiKey: '',
           model: 'gpt-5-codex',
         }),

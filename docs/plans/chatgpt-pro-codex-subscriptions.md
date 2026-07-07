@@ -52,7 +52,7 @@ Likely files:
 
 - `src/lib/llm/provider.ts`: existing provider registry and active-configuration switching.
 - `src/lib/llm/base.ts`: `LlmRuntime` interface for `streamChat`, `testConnection`, and `listModels`.
-- `src/lib/llm/openai.ts`: message/image conversion, streaming SSE parsing, model listing/test patterns, reasoning config concepts if compatible.
+- `src/lib/llm/openai.ts`: message/image conversion, streaming SSE parsing, model listing/test patterns, reasoning config concepts if compatible. Do not reuse the OpenAI API host for Codex OAuth tokens.
 - `src/components/AssistantPanel.tsx`: provider accordion, model combobox, Save/test flow, status/error messages.
 - `src/hooks/useProviderSettings.ts`: provider option/metadata plumbing.
 - `src/lib/storage.ts`: default-setting merge and per-provider saved configuration pattern.
@@ -69,7 +69,7 @@ Likely files:
 - [x] Define the new provider id, metadata, default model(s), and auth state types.
 - [x] Add provider defaults and storage merge handling for existing users.
 - [x] Implement OAuth sign-in flow, token refresh, and sign-out.
-- [x] Implement the new `LlmRuntime` provider using OpenAI chat-completions-compatible request helpers with Codex OAuth bearer and `ChatGPT-Account-ID` headers.
+- [x] Implement the new `LlmRuntime` provider using the ChatGPT backend Responses surface with Codex OAuth bearer and `ChatGPT-Account-ID` headers.
 - [x] Register the provider in `llmProviderFactory`.
 - [x] Update settings UI to show OAuth controls instead of API-key input for the subscription provider.
 - [x] Update validation/test-connection flow for OAuth-authenticated providers.
@@ -80,6 +80,7 @@ Likely files:
 
 - Implemented the Codex device-code flow from `openai-codex.ts` using the same OpenAI OAuth client id, device-auth endpoints, token exchange endpoint, and `chatgpt_account_id` JWT claim extraction.
 - The runtime sends Codex OAuth bearer tokens with the `ChatGPT-Account-ID` header used by Codex clients.
+- Codex OAuth tokens must call the ChatGPT backend, not the public OpenAI API host: default base `https://chatgpt.com/backend-api/codex`, request path `POST {base}/responses`. Legacy saved subscription endpoints pointing at `https://api.openai.com/v1` are rewritten to the ChatGPT backend to avoid `api.responses.write` scope errors.
 - OAuth credentials are stored in the provider-specific settings configuration, separate from API keys.
 
 ## Verification

@@ -1,6 +1,6 @@
 import type { AppSettings, LlmProvider, LlmProviderConfiguration } from '../../types';
 import { BaseLlmProvider, type LlmConnectionTestResult, type LlmModelOption, type LlmProviderMetadata, type LlmRuntime, type StreamLlmChatArgs } from './base';
-import { ChatGptSubscriptionProvider } from './chatgptSubscription';
+import { ChatGptSubscriptionProvider, resolveSubscriptionApiBase } from './chatgptSubscription';
 import { OllamaProvider } from './ollama';
 import { OpenAiCompatibleProvider } from './openai';
 
@@ -50,14 +50,22 @@ export class LlmProviderFactory {
     return `${this.createRuntime(settings).name} · ${settings.model}`;
   }
 
+  normalizeProviderConfiguration(provider: LlmProvider, configuration: LlmProviderConfiguration): LlmProviderConfiguration {
+    if (provider !== 'chatgpt-subscription') return configuration;
+    return {
+      ...configuration,
+      endpoint: resolveSubscriptionApiBase(configuration.endpoint),
+    };
+  }
+
   createDefaultConfiguration(provider: LlmProvider): LlmProviderConfiguration {
     const metadata = this.getMetadata(provider);
-    return {
+    return this.normalizeProviderConfiguration(provider, {
       endpoint: metadata.defaultEndpoint,
       model: metadata.defaultModel,
       apiKey: '',
       chatGptSubscriptionCredentials: provider === 'chatgpt-subscription' ? null : undefined,
-    };
+    });
   }
 
   createDefaultConfigurations(): Record<LlmProvider, LlmProviderConfiguration> {
@@ -71,12 +79,12 @@ export class LlmProviderFactory {
   }
 
   captureActiveConfiguration(settings: AppSettings): LlmProviderConfiguration {
-    return {
+    return this.normalizeProviderConfiguration(settings.provider, {
       endpoint: settings.endpoint,
       model: settings.model,
       apiKey: settings.apiKey,
       chatGptSubscriptionCredentials: settings.providerConfigurations[settings.provider]?.chatGptSubscriptionCredentials,
-    };
+    });
   }
 
   withActiveConfiguration(settings: AppSettings): AppSettings {
@@ -94,12 +102,15 @@ export class LlmProviderFactory {
       ...settings.providerConfigurations,
       [settings.provider]: this.captureActiveConfiguration(settings),
     };
-    const configuration = providerConfigurations[provider] ?? this.createDefaultConfiguration(provider);
+    const configuration = this.normalizeProviderConfiguration(provider, providerConfigurations[provider] ?? this.createDefaultConfiguration(provider));
 
     return {
       ...settings,
       provider,
-      providerConfigurations,
+      providerConfigurations: {
+        ...providerConfigurations,
+        [provider]: configuration,
+      },
       endpoint: configuration.endpoint,
       model: configuration.model,
       apiKey: configuration.apiKey,

@@ -75,10 +75,16 @@ export class AppStorage {
       theme: browserTheme,
     });
     const provider = settings.provider ?? DEFAULT_SETTINGS.provider;
-    const providerConfigurations = {
+    const providerConfigurations = (Object.entries({
       ...defaultProviderConfigurations,
       ...settings.providerConfigurations,
-    };
+    }) as Array<[AppSettings['provider'], AppSettings['providerConfigurations'][AppSettings['provider']]]>).reduce(
+      (configs, [providerId, configuration]) => ({
+        ...configs,
+        [providerId]: llmProviderFactory.normalizeProviderConfiguration(providerId, configuration),
+      }),
+      {} as AppSettings['providerConfigurations'],
+    );
     const activeConfiguration = providerConfigurations[provider] ?? llmProviderFactory.createDefaultConfiguration(provider);
 
     return {

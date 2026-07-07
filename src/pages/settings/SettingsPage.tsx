@@ -143,6 +143,7 @@ export function SettingsPage() {
                 {settings.provider === 'chatgpt-subscription' && (
                   <ChatGptSubscriptionAuthCard auth={chatGptSubscriptionAuth} isBusy={isBusy} />
                 )}
+                {settings.provider !== 'chatgpt-subscription' && (
                 <label>
                   Endpoint / base URL
                   <input
@@ -151,6 +152,13 @@ export function SettingsPage() {
                     onChange={(event) => updateEndpoint(event.target.value)}
                   />
                 </label>
+                )}
+                {settings.provider === 'chatgpt-subscription' && (
+                  <p className="settings-hint">
+                    Uses OpenAI Codex subscription API at <code>{endpointPlaceholder}</code> (same as Hermes <code>openai-codex</code> / Codex CLI).
+                    Models are loaded from <code>/models</code> on that host after sign-in.
+                  </p>
+                )}
                 {providerMetadata.requiresApiKey && (
                   <label>
                     API key
