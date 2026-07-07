@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { loginOpenAICodexDeviceCode, type OpenAiCodexDeviceCodeInfo } from '../lib/llm/chatgptSubscription';
+import { openExternalUrl } from '../lib/openExternalUrl';
 import { CHATGPT_SUBSCRIPTION_DEFAULT_ENDPOINT, type AppSettings, type ChatGptSubscriptionCredentials } from '../types';
 
 type AuthStatus = 'idle' | 'waiting' | 'signed-in' | 'error';
@@ -49,7 +50,9 @@ export function useChatGptSubscriptionAuth(settings: AppSettings, onSettingsChan
         onDeviceCode: (info) => {
           setDeviceCodeInfo(info);
           void navigator.clipboard?.writeText(info.userCode).catch(() => undefined);
-          window.open(info.verificationUri, '_blank', 'noopener,noreferrer');
+          void openExternalUrl(info.verificationUri).catch((openError) => {
+            setError(openError instanceof Error ? openError.message : String(openError));
+          });
         },
       });
       applyCredentials(nextCredentials);
