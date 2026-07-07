@@ -102,6 +102,11 @@ function createAbortError() {
   return new DOMException('Save cancelled.', 'AbortError');
 }
 
+function createDefaultUntitledFileName(title: string) {
+  const titleNumber = title.match(/^Untitled\s+(\d+)$/i)?.[1];
+  return titleNumber ? `untitled-${titleNumber}.excalidraw` : 'untitled.excalidraw';
+}
+
 function createSnapshotFingerprint(snapshot: DiagramSnapshot | null) {
   return snapshot ? serializeExcalidrawFile(snapshot) : null;
 }
@@ -471,7 +476,7 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
 
           const fileName = await prompt({
             ...WORKSPACE_TAB_DIALOG_COPY.saveUntitledFile,
-            defaultValue: tab.title,
+            defaultValue: createDefaultUntitledFileName(tab.title),
             validate: validateWorkspaceFileName,
           });
           if (!fileName) throw createAbortError();

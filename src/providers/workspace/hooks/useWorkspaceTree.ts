@@ -8,6 +8,10 @@ function toErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }
 
+function isAbortError(error: unknown) {
+  return error instanceof DOMException && error.name === 'AbortError';
+}
+
 export function useWorkspaceTree() {
   const [root, setRoot] = useState<WorkspaceRoot | null>(null);
   const [entriesByParentId, setEntriesByParentId] = useState<Record<string, WorkspaceEntry[]>>({});
@@ -77,7 +81,9 @@ export function useWorkspaceTree() {
       try {
         await nativeWorkspaceProvider.openRootInNewWindow();
       } catch (error) {
-        setTreeError(toErrorMessage(error));
+        if (!isAbortError(error)) {
+          setTreeError(toErrorMessage(error));
+        }
       } finally {
         setIsOpeningRoot(false);
       }
@@ -96,7 +102,9 @@ export function useWorkspaceTree() {
       saveRestorableRoot(result.root);
       return result.root;
     } catch (error) {
-      setTreeError(toErrorMessage(error));
+      if (!isAbortError(error)) {
+        setTreeError(toErrorMessage(error));
+      }
       return null;
     } finally {
       setIsOpeningRoot(false);

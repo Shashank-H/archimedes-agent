@@ -26,6 +26,7 @@ pub fn run() {
 
     let builder = builder
         .plugin(tauri_plugin_http::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .manage(workspace::WorkspaceState::new())
         .setup(|app| {
@@ -37,6 +38,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             workspace::open_workspace_root,
+            workspace::pick_workspace_save_file,
             workspace::open_workspace_root_at,
             workspace::open_workspace_path,
             workspace::take_native_open_requests,
@@ -45,6 +47,7 @@ pub fn run() {
             workspace::open_workspace_path_in_new_window,
             workspace::list_workspace_children,
             workspace::read_workspace_file,
+            workspace::create_workspace_file,
             workspace::write_workspace_file,
         ]);
 
