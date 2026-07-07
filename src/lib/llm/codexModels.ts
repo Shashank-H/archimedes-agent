@@ -5,7 +5,6 @@
  */
 
 import { CHATGPT_SUBSCRIPTION_DEFAULT_ENDPOINT, type AppSettings } from '../../types';
-import { subscriptionFetch } from '../http/subscriptionFetch';
 
 const CODEX_MODELS_URL = `${CHATGPT_SUBSCRIPTION_DEFAULT_ENDPOINT}/models?client_version=1.0.0`;
 
@@ -69,7 +68,7 @@ function parseCodexModelEntries(entries: unknown): string[] {
 }
 
 export async function fetchCodexModelIds(accessToken: string): Promise<string[]> {
-  const response = await subscriptionFetch(CODEX_MODELS_URL, {
+  const response = await fetch(CODEX_MODELS_URL, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${accessToken}`,
