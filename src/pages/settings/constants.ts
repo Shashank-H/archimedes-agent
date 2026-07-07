@@ -22,7 +22,8 @@ export const RECOMMENDED_VISION_MODELS = [
 export const OPEN_SOURCE_CREDITS = [
   { name: 'Design.md Vercel analysis', packageName: 'getdesign.md/vercel/design-md', license: 'Independent public design analysis', url: 'https://getdesign.md/vercel/design-md', note: 'Vercel-inspired DESIGN.md reference used for visual direction; not affiliated with Vercel.' },
   { name: 'Excalidraw', packageName: '@excalidraw/excalidraw', license: 'MIT', url: 'https://github.com/excalidraw/excalidraw', note: 'Embeddable whiteboard and diagram canvas.' },
-  { name: 'Tauri', packageName: '@tauri-apps/api / @tauri-apps/cli / @tauri-apps/plugin-*', license: 'Apache-2.0 OR MIT', url: 'https://tauri.app', note: 'Desktop app runtime, APIs, plugins, and build tooling.' },
+  { name: 'Tauri', packageName: '@tauri-apps/api / @tauri-apps/cli', license: 'Apache-2.0 OR MIT', url: 'https://tauri.app', note: 'Desktop app runtime, APIs, and build tooling.' },
+  { name: 'Tauri Dialog Plugin', packageName: 'tauri-plugin-dialog', license: 'Apache-2.0 OR MIT', url: 'https://github.com/tauri-apps/plugins-workspace', note: 'Native desktop folder picker used by workspace opening.' },
   { name: 'PostHog JS', packageName: 'posthog-js', license: 'See package LICENSE', url: 'https://posthog.com/docs/libraries/js', note: 'Privacy-aware product analytics client.' },
   { name: 'Radix UI', packageName: '@radix-ui/*', license: 'MIT', url: 'https://www.radix-ui.com', note: 'Accessible primitives and icons used for dialogs, switches, tooltips, and app iconography.' },
   { name: 'React', packageName: 'react / react-dom', license: 'MIT', url: 'https://react.dev', note: 'User-interface rendering framework.' },
