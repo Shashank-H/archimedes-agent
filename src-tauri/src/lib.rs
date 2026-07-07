@@ -4,6 +4,16 @@ use std::path::PathBuf;
 
 use tauri::Manager;
 
+#[tauri::command]
+fn open_external_url(url: String) -> Result<(), String> {
+    let url = url.trim();
+    if url.is_empty() {
+        return Err("URL cannot be empty".into());
+    }
+
+    tauri_plugin_opener::open_url(url, None::<&str>).map_err(|error| error.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default();
@@ -37,6 +47,7 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            open_external_url,
             workspace::open_workspace_root,
             workspace::pick_workspace_save_file,
             workspace::open_workspace_root_at,

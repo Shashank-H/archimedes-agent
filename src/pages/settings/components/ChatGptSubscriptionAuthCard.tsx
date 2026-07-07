@@ -31,6 +31,11 @@ export function ChatGptSubscriptionAuthCard({ auth, isBusy }: ChatGptSubscriptio
           <Icon name="plug" size={15} />
           {auth.credentials ? 'Reconnect' : auth.isSigningIn ? 'Waiting for login...' : 'Sign in'}
         </button>
+        {auth.deviceCodeInfo && (
+          <button type="button" className="secondary-settings-button" onClick={auth.openDeviceCodeUrl}>
+            Open browser
+          </button>
+        )}
         {auth.isSigningIn && (
           <button type="button" className="secondary-settings-button" onClick={auth.cancelSignIn}>
             Cancel

@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { loginOpenAICodexDeviceCode, type OpenAiCodexDeviceCodeInfo } from '../lib/llm/chatgptSubscription';
+import { openExternalUrl } from '../lib/openExternalUrl';
 import { CHATGPT_SUBSCRIPTION_DEFAULT_ENDPOINT, type AppSettings, type ChatGptSubscriptionCredentials } from '../types';
 
 type AuthStatus = 'idle' | 'waiting' | 'signed-in' | 'error';
@@ -49,7 +50,9 @@ export function useChatGptSubscriptionAuth(settings: AppSettings, onSettingsChan
         onDeviceCode: (info) => {
           setDeviceCodeInfo(info);
           void navigator.clipboard?.writeText(info.userCode).catch(() => undefined);
-          window.open(info.verificationUri, '_blank', 'noopener,noreferrer');
+          void openExternalUrl(info.verificationUri).catch((openError) => {
+            setError(`Could not open browser automatically: ${openError instanceof Error ? openError.message : String(openError)}`);
+          });
         },
       });
       applyCredentials(nextCredentials);
@@ -64,6 +67,16 @@ export function useChatGptSubscriptionAuth(settings: AppSettings, onSettingsChan
       }
     } finally {
       if (abortControllerRef.current === controller) abortControllerRef.current = null;
+    }
+  };
+
+  const openDeviceCodeUrl = async () => {
+    if (!deviceCodeInfo) return;
+    setError('');
+    try {
+      await openExternalUrl(deviceCodeInfo.verificationUri);
+    } catch (openError) {
+      setError(`Could not open browser automatically: ${openError instanceof Error ? openError.message : String(openError)}`);
     }
   };
 
@@ -90,6 +103,7 @@ export function useChatGptSubscriptionAuth(settings: AppSettings, onSettingsChan
     isSigningIn: status === 'waiting',
     signIn,
     cancelSignIn,
+    openDeviceCodeUrl,
     signOut,
     applyCredentials,
   };
