@@ -48,6 +48,7 @@ export function useChatGptSubscriptionAuth(settings: AppSettings, onSettingsChan
         signal: controller.signal,
         onDeviceCode: (info) => {
           setDeviceCodeInfo(info);
+          void navigator.clipboard?.writeText(info.userCode).catch(() => undefined);
           window.open(info.verificationUri, '_blank', 'noopener,noreferrer');
         },
       });

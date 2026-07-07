@@ -21,7 +21,7 @@ export function ChatGptSubscriptionAuthCard({ auth, isBusy }: ChatGptSubscriptio
       </div>
       {auth.deviceCodeInfo && (
         <div className="oauth-device-code">
-          <span>Enter this code at {auth.deviceCodeInfo.verificationUri}</span>
+          <span>Code copied to clipboard — paste at {auth.deviceCodeInfo.verificationUri}</span>
           <strong>{auth.deviceCodeInfo.userCode}</strong>
         </div>
       )}
