@@ -34,6 +34,18 @@ type NativeOpenRootDto = {
   children: NativeWorkspaceEntryDto[];
 };
 
+type NativeOpenRootSelectionDto = {
+  status: 'opened' | 'canceled' | 'unavailable' | 'invalid' | 'native_error';
+  root: NativeOpenRootDto | null;
+  message: string | null;
+};
+
+type NativeSaveFileSelectionDto = {
+  status: 'selected' | 'canceled' | 'unavailable' | 'invalid' | 'native_error';
+  path: string | null;
+  message: string | null;
+};
+
 type NativeOpenPathDto = {
   status: 'opened' | 'invalid' | 'unsupported';
   kind: 'file' | 'directory' | null;
@@ -94,13 +106,25 @@ export class NativeWorkspaceProvider implements WorkspaceDataProvider {
   };
 
   async openRoot(): Promise<WorkspaceOpenRootResult> {
-    let result = await invoke<NativeOpenRootDto | null>('open_workspace_root');
+    const result = await invoke<NativeOpenRootSelectionDto>('open_workspace_root');
 
-    if (!result) {
-      throw new Error('No workspace folder selected.');
+    if (result.status === 'opened' && result.root) {
+      return toOpenRootResult(result.root);
     }
 
-    return toOpenRootResult(result);
+    if (result.status === 'canceled') {
+      throw new DOMException('Folder selection canceled.', 'AbortError');
+    }
+
+    if (result.status === 'invalid') {
+      throw new Error(result.message ?? 'The selected workspace folder is invalid or unreadable.');
+    }
+
+    if (result.status === 'unavailable') {
+      throw new Error(result.message ?? 'Native folder picking is unavailable on this platform.');
+    }
+
+    throw new Error(result.message ?? 'The native folder picker failed unexpectedly.');
   }
 
   async restoreRoot(root: WorkspaceRoot): Promise<WorkspaceOpenRootResult> {
@@ -198,10 +222,17 @@ export class NativeWorkspaceProvider implements WorkspaceDataProvider {
 
   async createFileDocument(suggestedName: string, snapshot: DiagramSnapshot) {
     const suggestedPath = withExcalidrawExtension(suggestedName.trim() || 'local-draft');
-    const selectedPath = window.prompt('Save this diagram as an absolute file path:', suggestedPath);
-    if (!selectedPath) throw new DOMException('Save cancelled.', 'AbortError');
+    const result = await invoke<NativeSaveFileSelectionDto>('pick_workspace_save_file', { suggestedName: suggestedPath });
 
-    const path = withExcalidrawExtension(selectedPath);
+    if (result.status === 'canceled') {
+      throw new DOMException('Save cancelled.', 'AbortError');
+    }
+
+    if (result.status !== 'selected' || !result.path) {
+      throw new Error(result.message ?? 'The native save dialog failed unexpectedly.');
+    }
+
+    const path = withExcalidrawExtension(result.path);
     const title = basename(path);
     const id = `native://${path}` as WorkspaceEntry['id'];
     const document: WorkspaceDocument = {
@@ -234,34 +265,23 @@ export class NativeWorkspaceProvider implements WorkspaceDataProvider {
 
   async createDocument(root: WorkspaceRoot, suggestedName: string, snapshot: DiagramSnapshot) {
     const fileName = toExcalidrawFileName(suggestedName);
-    const path = `${root.path}/${fileName}`;
-    const id = `native://${path}` as WorkspaceEntry['id'];
+    const entry = toEntry(await invoke<NativeWorkspaceEntryDto>('create_workspace_file', {
+      rootId: root.id,
+      fileName,
+      content: serializeExcalidrawFile(snapshot),
+    }));
     const document: WorkspaceDocument = {
-      id,
+      id: entry.id,
       providerKind: this.kind,
       rootId: root.id,
-      title: fileName,
-      path,
+      title: entry.name,
+      path: entry.path,
       snapshot,
       isUntitled: false,
       isSupported: true,
     };
-    await this.writeDocument(document, snapshot);
 
-    return {
-      document,
-      entry: {
-        id,
-        rootId: root.id,
-        providerKind: this.kind,
-        kind: 'file' as const,
-        name: fileName,
-        path,
-        parentId: null,
-        extension: extensionFor(fileName),
-        isSupported: true,
-      },
-    };
+    return { document, entry };
   }
 }
 

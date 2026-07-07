@@ -24,6 +24,13 @@
 - Do not add new large sections to `styles.css` unless they are truly global tokens, resets, or cross-app primitives; prefer incremental migration toward smaller maintainable CSS files when touching existing feature styles.
 - Always use theme tokens/CSS variables for colors in UI styles. Do not introduce hardcoded hex/rgb/rgba colors in component or feature CSS unless defining/updating the theme tokens themselves.
 
+## Pull request workflow
+
+- Create a new branch from the latest `main` for every new issue implementation.
+- When creating a PR, use `.github/pull_request_template.md` and fill out every relevant section instead of replacing it with free-form notes.
+- Include the linked issue, concise change summary, validation commands/results, manual test notes, screenshots/recordings for UI changes, and risk/rollout notes.
+- Do not mark checklist items complete unless they were actually verified; if a check is not applicable, explain why in the validation or risk notes.
+
 ## Architecture rules
 
 - Prefer class-based designs for services, factories, providers, storage, and other reusable application infrastructure.

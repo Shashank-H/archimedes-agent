@@ -117,15 +117,105 @@ pub struct OpenWorkspacePathDto {
     pub message: Option<String>,
 }
 
+#[derive(Clone, Serialize)]
+pub struct OpenWorkspaceRootSelectionDto {
+    pub status: String,
+    pub root: Option<OpenWorkspaceRootDto>,
+    pub message: Option<String>,
+}
+
+#[derive(Clone, Serialize)]
+pub struct SaveWorkspaceFileSelectionDto {
+    pub status: String,
+    pub path: Option<String>,
+    pub message: Option<String>,
+}
+
 #[tauri::command]
 pub fn open_workspace_root(
+    app: AppHandle,
     state: State<'_, WorkspaceState>,
-) -> Result<Option<OpenWorkspaceRootDto>, String> {
-    let Some(selected_path) = platform::pick_directory() else {
-        return Ok(None);
+) -> Result<OpenWorkspaceRootSelectionDto, String> {
+    let selected_path = match platform::pick_directory(&app) {
+        Ok(platform::DirectoryPickerResult::Selected(path)) => path,
+        Ok(platform::DirectoryPickerResult::Canceled) => {
+            return Ok(OpenWorkspaceRootSelectionDto {
+                status: "canceled".to_string(),
+                root: None,
+                message: None,
+            });
+        }
+        Ok(platform::DirectoryPickerResult::Invalid(message)) => {
+            return Ok(OpenWorkspaceRootSelectionDto {
+                status: "invalid".to_string(),
+                root: None,
+                message: Some(message),
+            });
+        }
+        Ok(platform::DirectoryPickerResult::Unavailable(message)) => {
+            return Ok(OpenWorkspaceRootSelectionDto {
+                status: "unavailable".to_string(),
+                root: None,
+                message: Some(message),
+            });
+        }
+        Err(message) => {
+            return Ok(OpenWorkspaceRootSelectionDto {
+                status: "native_error".to_string(),
+                root: None,
+                message: Some(message),
+            });
+        }
     };
 
-    open_workspace_root_from_path(state, selected_path)
+    match open_workspace_root_from_path(state, selected_path) {
+        Ok(root) => Ok(OpenWorkspaceRootSelectionDto {
+            status: "opened".to_string(),
+            root,
+            message: None,
+        }),
+        Err(message) => Ok(OpenWorkspaceRootSelectionDto {
+            status: "invalid".to_string(),
+            root: None,
+            message: Some(message),
+        }),
+    }
+}
+
+#[tauri::command]
+pub fn pick_workspace_save_file(
+    app: AppHandle,
+    suggested_name: String,
+) -> Result<SaveWorkspaceFileSelectionDto, String> {
+    match platform::pick_save_file(&app, &suggested_name) {
+        Ok(platform::SaveFilePickerResult::Selected(path)) => Ok(SaveWorkspaceFileSelectionDto {
+            status: "selected".to_string(),
+            path: Some(path.to_string_lossy().to_string()),
+            message: None,
+        }),
+        Ok(platform::SaveFilePickerResult::Canceled) => Ok(SaveWorkspaceFileSelectionDto {
+            status: "canceled".to_string(),
+            path: None,
+            message: None,
+        }),
+        Ok(platform::SaveFilePickerResult::Invalid(message)) => Ok(SaveWorkspaceFileSelectionDto {
+            status: "invalid".to_string(),
+            path: None,
+            message: Some(message),
+        }),
+        Ok(platform::SaveFilePickerResult::Unavailable(message)) => {
+            Ok(SaveWorkspaceFileSelectionDto {
+                status: "unavailable".to_string(),
+                path: None,
+                message: Some(message),
+            })
+        }
+        Err(message) => Ok(SaveWorkspaceFileSelectionDto {
+            status: "native_error".to_string(),
+            path: None,
+            message: Some(message),
+        }),
+    }
 }
 
 #[tauri::command]
@@ -313,6 +403,34 @@ pub fn read_workspace_file(
     }
 
     fs::read_to_string(&safe_file_path).map_err(|error| format!("Could not read file: {error}"))
+}
+
+#[tauri::command]
+pub fn create_workspace_file(
+    state: State<'_, WorkspaceState>,
+    root_id: String,
+    file_name: String,
+    content: String,
+) -> Result<WorkspaceEntryDto, String> {
+    let root_path = get_root_path(&state, &root_id)?;
+    let safe_file_name = Path::new(&file_name)
+        .file_name()
+        .ok_or_else(|| "Workspace file has no filename".to_string())?;
+    let file_path = root_path.join(safe_file_name);
+
+    if !provider::is_supported_diagram_path(&file_path.to_string_lossy()) {
+        return Err("Archimedes can save .excalidraw and .excalidraw.json files.".to_string());
+    }
+
+    if file_path.exists() {
+        return Err(format!(
+            "A file named '{}' already exists in this workspace folder. Choose a different file name.",
+            safe_file_name.to_string_lossy()
+        ));
+    }
+
+    fs::write(&file_path, content).map_err(|error| format!("Could not write file: {error}"))?;
+    Ok(file_entry(&file_path, Some(root_id)))
 }
 
 #[tauri::command]
