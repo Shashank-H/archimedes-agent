@@ -27,6 +27,7 @@ export const OPEN_SOURCE_CREDITS = [
   { name: 'PostHog JS', packageName: 'posthog-js', license: 'See package LICENSE', url: 'https://posthog.com/docs/libraries/js', note: 'Privacy-aware product analytics client.' },
   { name: 'Radix UI', packageName: '@radix-ui/*', license: 'MIT', url: 'https://www.radix-ui.com', note: 'Accessible primitives and icons used for dialogs, switches, tooltips, and app iconography.' },
   { name: 'React', packageName: 'react / react-dom', license: 'MIT', url: 'https://react.dev', note: 'User-interface rendering framework.' },
+  { name: 'Reqwest', packageName: 'reqwest', license: 'Apache-2.0 OR MIT', url: 'https://github.com/seanmonstar/reqwest', note: 'Rust HTTP client used by the desktop OpenAI Codex OAuth bridge.' },
   { name: 'React Hotkeys Hook', packageName: 'react-hotkeys-hook', license: 'MIT', url: 'https://github.com/JohannesKlauss/react-hotkeys-hook', note: 'Global keyboard shortcut handling.' },
   { name: 'Vite', packageName: 'vite / @vitejs/plugin-react', license: 'MIT', url: 'https://vite.dev', note: 'Development server and production bundler.' },
   { name: 'TypeScript', packageName: 'typescript', license: 'Apache-2.0', url: 'https://www.typescriptlang.org', note: 'Typed JavaScript language tooling.' },

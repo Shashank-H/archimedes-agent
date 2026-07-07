@@ -117,6 +117,7 @@ export function useAgentReview({ settings, messages, setSettings, setMessages, s
         messages: llmMessages,
         signal: controller.signal,
         onToken: (token) => appendToken(assistantId, token),
+        onSettingsChange: setSettings,
       });
       lastReviewSignatureRef.current = currentSignature;
       if (mode === ReviewMode.Proactive && current) {
@@ -186,7 +187,7 @@ export function useAgentReview({ settings, messages, setSettings, setMessages, s
     setIsBusy(true);
     setStatus(`Saving and testing ${providerName}...`);
     try {
-      const result = await llmProviderFactory.testConnection(settings);
+      const result = await llmProviderFactory.testConnection(settings, setSettings);
       setModelValidationError(null);
       setSettings((currentSettings) =>
         settingsValidationKey(currentSettings) === validationKey

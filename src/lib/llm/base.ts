@@ -5,6 +5,7 @@ export type StreamLlmChatArgs = {
   messages: LlmChatMessage[];
   signal?: AbortSignal;
   onToken: (token: string) => void;
+  onSettingsChange?: (settings: AppSettings) => void;
 };
 
 export type LlmConnectionTestResult = {
@@ -41,7 +42,7 @@ export interface LlmRuntime {
   readonly name: string;
   readonly metadata: LlmProviderMetadata;
   streamChat(args: StreamLlmChatArgs): Promise<void>;
-  testConnection(settings: AppSettings): Promise<LlmConnectionTestResult>;
+  testConnection(settings: AppSettings, onSettingsChange?: (settings: AppSettings) => void): Promise<LlmConnectionTestResult>;
   listModels(settings: AppSettings): Promise<LlmModelOption[]>;
 }
 
@@ -61,6 +62,6 @@ export abstract class BaseLlmProvider implements LlmRuntime {
   abstract readonly metadata: LlmProviderMetadata;
 
   abstract streamChat(args: StreamLlmChatArgs): Promise<void>;
-  abstract testConnection(settings: AppSettings): Promise<LlmConnectionTestResult>;
+  abstract testConnection(settings: AppSettings, onSettingsChange?: (settings: AppSettings) => void): Promise<LlmConnectionTestResult>;
   abstract listModels(settings: AppSettings): Promise<LlmModelOption[]>;
 }

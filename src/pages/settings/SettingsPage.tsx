@@ -12,6 +12,7 @@ import { TooltipIconAction } from '../../components/TooltipIconAction';
 import { useProviderSettings } from '../../hooks/useProviderSettings';
 import { useModelSelection } from '../../hooks/useModelSelection';
 import { useMaskedApiKeyInput } from '../../hooks/useMaskedApiKeyInput';
+import { useCodexAuth } from '../../hooks/useCodexAuth';
 import { useReviewTimingSettings } from '../../hooks/useReviewTimingSettings';
 import { settingsValidationKey } from '../../lib/settingsValidation';
 import type { LlmProvider } from '../../types';
@@ -48,6 +49,7 @@ export function SettingsPage() {
   } = useProviderSettings(settings, onSettingsChange);
   const modelSelection = useModelSelection({ settings, onSettingsChange });
   const maskedApiKeyInput = useMaskedApiKeyInput({ settings, onSettingsChange });
+  const codexAuth = useCodexAuth({ settings, onSettingsChange });
   const reviewTiming = useReviewTimingSettings({ settings, onSettingsChange });
   const currentSiteOrigin = typeof window === 'undefined' ? 'https://this-site.example' : window.location.origin;
   const ollamaOriginInstructions = useOllamaOriginInstructions(currentSiteOrigin);
@@ -162,6 +164,32 @@ export function SettingsPage() {
                       onChange={maskedApiKeyInput.onChange}
                     />
                   </label>
+                )}
+                {settings.provider === 'openai-codex' && (
+                  <div className="settings-option-card codex-auth-card">
+                    <span className="settings-option-icon" aria-hidden="true">
+                      <Icon name="plug" size={16} />
+                    </span>
+                    <div className="settings-option-copy">
+                      <div className="settings-option-title-row">
+                        <span className="settings-option-title">ChatGPT OAuth</span>
+                      </div>
+                      <p className="settings-option-description">
+                        Sign in with ChatGPT to use OpenAI Codex models. Tokens are stored locally in this app.
+                      </p>
+                      {codexAuth.deviceAuth && (
+                        <p className="settings-option-warning">
+                          Open {codexAuth.deviceAuth.verificationUrl} and enter code <strong>{codexAuth.deviceAuth.userCode}</strong>.
+                        </p>
+                      )}
+                      {codexAuth.status && <p className="settings-option-description">{codexAuth.status}</p>}
+                      {codexAuth.error && <p className="settings-field-error">{codexAuth.error}</p>}
+                    </div>
+                    <button type="button" className="secondary-settings-button" onClick={codexAuth.isSignedIn ? codexAuth.signOut : codexAuth.startSignIn} disabled={codexAuth.isSigningIn}>
+                      <Icon name={codexAuth.isSignedIn ? 'x' : 'plug'} size={15} />
+                      {codexAuth.isSigningIn ? 'Waiting...' : codexAuth.isSignedIn ? 'Sign out' : 'Sign in'}
+                    </button>
+                  </div>
                 )}
                 <label>
                   <span className="settings-inline-label">

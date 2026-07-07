@@ -1,3 +1,4 @@
+mod codex;
 mod workspace;
 
 use std::path::PathBuf;
@@ -48,6 +49,10 @@ pub fn run() {
             workspace::read_workspace_file,
             workspace::create_workspace_file,
             workspace::write_workspace_file,
+            codex::codex_device_auth_start,
+            codex::codex_device_auth_poll,
+            codex::codex_refresh_token,
+            codex::codex_http_request,
         ]);
 
     let app = builder
