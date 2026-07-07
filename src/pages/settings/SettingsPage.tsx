@@ -16,6 +16,8 @@ import { useReviewTimingSettings } from '../../hooks/useReviewTimingSettings';
 import { settingsValidationKey } from '../../lib/settingsValidation';
 import type { LlmProvider } from '../../types';
 import { OLLAMA_OS_OPTIONS, OLLAMA_VISION_MODELS_URL, OPEN_SOURCE_CREDITS, PROJECT_GITHUB_URL, RECOMMENDED_VISION_MODELS, X_PROFILE_URL } from './constants';
+import { useChatGptSubscriptionAuth } from '../../hooks/useChatGptSubscriptionAuth';
+import { ChatGptSubscriptionAuthCard } from './components/ChatGptSubscriptionAuthCard';
 import { SettingsAccordion } from './components/SettingsAccordion';
 import { useOllamaOriginInstructions } from './hooks/useOllamaOriginInstructions';
 
@@ -49,6 +51,8 @@ export function SettingsPage() {
   const modelSelection = useModelSelection({ settings, onSettingsChange });
   const maskedApiKeyInput = useMaskedApiKeyInput({ settings, onSettingsChange });
   const reviewTiming = useReviewTimingSettings({ settings, onSettingsChange });
+  const chatGptSubscriptionAuth = useChatGptSubscriptionAuth(settings, onSettingsChange);
+  const chatGptSubscriptionReady = settings.provider !== 'chatgpt-subscription' || Boolean(chatGptSubscriptionAuth.credentials);
   const currentSiteOrigin = typeof window === 'undefined' ? 'https://this-site.example' : window.location.origin;
   const ollamaOriginInstructions = useOllamaOriginInstructions(currentSiteOrigin);
 
@@ -136,6 +140,9 @@ export function SettingsPage() {
                     className="settings-provider-select"
                   />
                 </label>
+                {settings.provider === 'chatgpt-subscription' && (
+                  <ChatGptSubscriptionAuthCard auth={chatGptSubscriptionAuth} isBusy={isBusy} />
+                )}
                 <label>
                   Endpoint / base URL
                   <input
@@ -238,7 +245,7 @@ export function SettingsPage() {
                   />
                 </label>
                 <div className="provider-config-actions">
-                  <button onClick={handleSaveProviderConfiguration} disabled={isBusy}>
+                  <button onClick={handleSaveProviderConfiguration} disabled={isBusy || !chatGptSubscriptionReady}>
                     <Icon name="plug" size={15} />
                     {testConnectionLabel}
                   </button>

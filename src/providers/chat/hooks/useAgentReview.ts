@@ -1,6 +1,7 @@
 import { type Dispatch, type RefObject, type SetStateAction, useCallback, useEffect, useRef, useState } from 'react';
 import { captureAnalyticsEvent } from '../../../lib/analytics';
 import { meaningfulSceneSignature } from '../../../lib/diagramSummary';
+import { mergeChatGptSubscriptionCredentials } from '../../../lib/chatgptSubscriptionSettings';
 import { llmProviderFactory } from '../../../lib/llm/provider';
 import { normalizeReviewDelayMs, normalizeReviewTimeoutMs } from '../../../lib/reviewTiming';
 import { settingsValidationKey } from '../../../lib/settingsValidation';
@@ -117,6 +118,9 @@ export function useAgentReview({ settings, messages, setSettings, setMessages, s
         messages: llmMessages,
         signal: controller.signal,
         onToken: (token) => appendToken(assistantId, token),
+        onChatGptSubscriptionCredentialsRefreshed: (credentials) => {
+          setSettings((current) => mergeChatGptSubscriptionCredentials(current, credentials));
+        },
       });
       lastReviewSignatureRef.current = currentSignature;
       if (mode === ReviewMode.Proactive && current) {
@@ -137,7 +141,7 @@ export function useAgentReview({ settings, messages, setSettings, setMessages, s
       setIsBusy(false);
       inFlightAbortRef.current = null;
     }
-  }, [appendMessage, appendToken, buildLlmReviewMessages, modelValidationError, settings, snapshotRef]);
+  }, [appendMessage, appendToken, buildLlmReviewMessages, modelValidationError, setSettings, settings, snapshotRef]);
 
   const scheduleProactiveReview = useCallback(() => {
     window.clearTimeout(proactiveTimerRef.current);

@@ -5,6 +5,7 @@ export type StreamLlmChatArgs = {
   messages: LlmChatMessage[];
   signal?: AbortSignal;
   onToken: (token: string) => void;
+  onChatGptSubscriptionCredentialsRefreshed?: (credentials: import('../../types').ChatGptSubscriptionCredentials) => void;
 };
 
 export type LlmConnectionTestResult = {
@@ -22,6 +23,7 @@ export type LlmProviderMetadata = {
   defaultEndpoint: string;
   defaultModel: string;
   requiresApiKey: boolean;
+  usesOAuth?: boolean;
 };
 
 export type LlmModelOption = {

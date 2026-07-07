@@ -28,7 +28,8 @@ export function useModelSelection({ settings, onSettingsChange }: UseModelSelect
   const hasKeyboardNavigatedRef = useRef(false);
   const lastSettingsKeyRef = useRef('');
 
-  const settingsKey = `${settings.provider}|${settings.endpoint}|${settings.apiKey}`;
+  const credentials = settings.providerConfigurations[settings.provider]?.chatGptSubscriptionCredentials;
+  const settingsKey = `${settings.provider}|${settings.endpoint}|${settings.apiKey}|${credentials?.accountId ?? ''}|${credentials?.expires ?? ''}`;
 
   useEffect(() => {
     if (lastSettingsKeyRef.current === settingsKey) return;
