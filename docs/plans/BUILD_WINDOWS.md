@@ -70,19 +70,21 @@ See `docs/OS_OPEN_AND_CLI.md` for the full checklist.
 
 ## Option B: Build using GitHub Actions
 
-A workflow has been added at:
+The repo now includes a tag-triggered desktop release workflow at:
 
 ```txt
-.github/workflows/windows-build.yml
+.github/workflows/desktop-release.yml
 ```
 
-Push the repo to GitHub, then run **Actions → Build Windows EXE → Run workflow**.
+Push a release tag such as `v1.2.3` from a commit on `main`. GitHub Actions will validate the tag ancestry, build Windows/Linux/macOS bundles, and upload platform artifacts.
 
-The built installer artifacts will be uploaded as:
+The Windows artifact is uploaded with this naming pattern:
 
 ```txt
-archimedes-agent-windows
+archimedes-agent-windows-x64-v<version>
 ```
+
+See `docs/RELEASES.md` for the full release process and tag commands.
 
 ## Notes
 

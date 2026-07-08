@@ -75,7 +75,13 @@ npm run tauri -- build
 Windows-specific instructions are in:
 
 ```txt
-BUILD_WINDOWS.md
+docs/plans/BUILD_WINDOWS.md
+```
+
+Release tagging and GitHub Actions desktop release flow are documented in:
+
+```txt
+docs/RELEASES.md
 ```
 
 ## Important implementation notes
