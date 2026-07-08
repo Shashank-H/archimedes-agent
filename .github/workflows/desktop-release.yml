@@ -66,16 +66,19 @@ jobs:
             target: x86_64-unknown-linux-gnu
             architecture: x64
             bundles: deb,appimage,rpm
+            prerelease_bundles: deb,appimage,rpm
           - platform: windows
             runner: windows-latest
             target: x86_64-pc-windows-msvc
             architecture: x64
-            bundles: ''
+            bundles: nsis,msi
+            prerelease_bundles: nsis
           - platform: macos
             runner: macos-13
             target: x86_64-apple-darwin
             architecture: x64
             bundles: ''
+            prerelease_bundles: ''
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -112,13 +115,20 @@ jobs:
         shell: bash
         env:
           BUNDLES: ${{ matrix.bundles }}
+          PRERELEASE_BUNDLES: ${{ matrix.prerelease_bundles }}
+          PRERELEASE: ${{ needs.validate-release.outputs.prerelease }}
           TARGET: ${{ matrix.target }}
         run: |
           set -euo pipefail
 
+          selected_bundles="$BUNDLES"
+          if [[ "$PRERELEASE" == "true" && -n "${PRERELEASE_BUNDLES:-}" ]]; then
+            selected_bundles="$PRERELEASE_BUNDLES"
+          fi
+
           args=(build --ci --target "$TARGET")
-          if [[ -n "$BUNDLES" ]]; then
-            args+=(--bundles "$BUNDLES")
+          if [[ -n "$selected_bundles" ]]; then
+            args+=(--bundles "$selected_bundles")
           fi
 
           npm run tauri -- "${args[@]}"
@@ -140,6 +150,7 @@ jobs:
 
   publish-release:
     name: Publish GitHub release
+    if: ${{ always() && needs.validate-release.result == 'success' }}
     needs:
       - validate-release
       - build-desktop
