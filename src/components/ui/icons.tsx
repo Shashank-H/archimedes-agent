@@ -37,6 +37,9 @@ import {
   ReloadIcon,
   SunIcon,
   TrashIcon,
+  EnterFullScreenIcon,
+  ExitFullScreenIcon,
+  DividerHorizontalIcon,
 } from '@radix-ui/react-icons';
 
 export type IconName =
@@ -77,7 +80,10 @@ export type IconName =
   | 'eye'
   | 'copy'
   | 'check'
-  | 'chevronDown';
+  | 'chevronDown'
+  | 'windowMinimize'
+  | 'windowMaximize'
+  | 'windowRestore';
 
 type RadixIconProps = { width?: number; height?: number; 'aria-hidden'?: boolean };
 
@@ -120,6 +126,9 @@ const RADIX_ICON_BY_NAME: Record<IconName, ComponentType<RadixIconProps>> = {
   copy: CopyIcon,
   check: CheckIcon,
   chevronDown: ChevronDownIcon,
+  windowMinimize: DividerHorizontalIcon,
+  windowMaximize: EnterFullScreenIcon,
+  windowRestore: ExitFullScreenIcon,
 };
 
 export function Icon({ name, size = 16 }: { name: IconName; size?: number }) {

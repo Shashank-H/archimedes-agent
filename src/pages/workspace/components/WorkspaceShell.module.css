@@ -447,6 +447,12 @@
 :global(.workspace-current-state.is-saving), :global(.workspace-status-save.is-saving) { color: var(--link); }
 :global(.workspace-current-state.is-error), :global(.workspace-status-save.is-error) { color: var(--error); }
 :global(.workspace-top-actions) { justify-content: flex-end; gap: 6px; min-width: 0; }
+:global(.workspace-top-bar) {
+  -webkit-app-region: drag;
+}
+:global(.workspace-top-bar button), :global(.workspace-top-bar a), :global(.workspace-top-bar input), :global(.workspace-top-bar select), :global(.workspace-top-bar [role='button']) {
+  -webkit-app-region: no-drag;
+}
 :global(.workspace-top-action), :global(.workspace-chrome-button), :global(.workspace-icon-button), :global(.workspace-section-header button) {
   min-height: 24px;
   height: 24px;
@@ -476,6 +482,40 @@
   border-radius: 999px;
   color: var(--mute);
   font-size: 11px;
+}
+:global(.workspace-window-controls) {
+  height: var(--workspace-topbar-height);
+  display: inline-flex;
+  align-items: stretch;
+  margin: 0 -8px 0 2px;
+  border-left: 1px solid var(--workspace-border, var(--hairline));
+  -webkit-app-region: no-drag;
+}
+:global(.workspace-window-control) {
+  width: 46px;
+  min-width: 46px;
+  min-height: 0;
+  height: 100%;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--body);
+  box-shadow: none;
+}
+:global(.workspace-window-control:hover), :global(.workspace-window-control:focus-visible) {
+  background: var(--workspace-hover-bg, var(--canvas-soft-2));
+  color: var(--ink);
+}
+:global(.workspace-window-control.is-destructive:hover), :global(.workspace-window-control.is-destructive:focus-visible) {
+  background: color-mix(in srgb, var(--error) 18%, var(--canvas));
+  color: var(--error);
+}
+:global(.workspace-window-control svg) {
+  display: block;
+  stroke-width: 1.8;
 }
 :global(.workspace-activity-rail) {
   flex: 0 0 var(--workspace-rail-width);
