@@ -1,5 +1,6 @@
 import type { AppSettings, LlmProvider, LlmProviderConfiguration } from '../../types';
 import { BaseLlmProvider, type LlmConnectionTestResult, type LlmModelOption, type LlmProviderMetadata, type LlmRuntime, type StreamLlmChatArgs } from './base';
+import { OpenAiCodexProvider } from './codex';
 import { OllamaProvider } from './ollama';
 import { OpenAiCompatibleProvider } from './openai';
 
@@ -20,11 +21,13 @@ export class LlmProviderFactory {
   private readonly providerConstructors: Record<LlmProvider, ProviderConstructor> = {
     ollama: OllamaProvider,
     'openai-compatible': OpenAiCompatibleProvider,
+    'openai-codex': OpenAiCodexProvider,
   };
 
   private readonly runtimes: Record<LlmProvider, LlmRuntime> = {
     ollama: new OllamaProvider(),
     'openai-compatible': new OpenAiCompatibleProvider(),
+    'openai-codex': new OpenAiCodexProvider(),
   };
 
   createRuntime(settings: Pick<AppSettings, 'provider'>): LlmRuntime {
@@ -71,6 +74,7 @@ export class LlmProviderFactory {
       endpoint: settings.endpoint,
       model: settings.model,
       apiKey: settings.apiKey,
+      codexAuth: settings.codexAuth,
     };
   }
 
@@ -98,6 +102,7 @@ export class LlmProviderFactory {
       endpoint: configuration.endpoint,
       model: configuration.model,
       apiKey: configuration.apiKey,
+      codexAuth: configuration.codexAuth,
     };
   }
 
@@ -105,8 +110,8 @@ export class LlmProviderFactory {
     return this.createRuntime(args.settings).streamChat(args);
   }
 
-  testConnection(settings: AppSettings): Promise<LlmConnectionTestResult> {
-    return this.createRuntime(settings).testConnection(settings);
+  testConnection(settings: AppSettings, onSettingsChange?: (settings: AppSettings) => void): Promise<LlmConnectionTestResult> {
+    return this.createRuntime(settings).testConnection(settings, onSettingsChange);
   }
 
   listModels(settings: AppSettings): Promise<LlmModelOption[]> {

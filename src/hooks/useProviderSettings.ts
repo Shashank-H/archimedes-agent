@@ -17,7 +17,9 @@ export function useProviderSettings(settings: AppSettings, onSettingsChange: (se
     endpointPlaceholder: providerMetadata.defaultEndpoint,
     modelPlaceholder: providerMetadata.defaultModel,
     testConnectionLabel: 'Save',
-    modelInfoTooltip: 'Sends prompts, images, and diagram metadata to this model. Choose a vision-capable model.',
+    modelInfoTooltip: settings.provider === 'openai-codex'
+      ? 'Uses the ChatGPT Codex backend with your local OAuth session. Choose a Codex model available to your ChatGPT account.'
+      : 'Sends prompts, images, and diagram metadata to this model. Choose a vision-capable model.',
     updateProvider,
   };
 }

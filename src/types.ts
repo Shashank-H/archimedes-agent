@@ -3,12 +3,20 @@ import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types';
 
 export type ThinkingLevel = 'off' | 'low' | 'medium' | 'high';
 export type AppTheme = 'light' | 'dark';
-export type LlmProvider = 'ollama' | 'openai-compatible';
+export type LlmProvider = 'ollama' | 'openai-compatible' | 'openai-codex';
+
+export type OpenAiCodexAuth = {
+  accessToken: string;
+  refreshToken: string;
+  lastRefreshAt: number;
+  expiresAt?: number;
+};
 
 export type LlmProviderConfiguration = {
   endpoint: string;
   apiKey: string;
   model: string;
+  codexAuth?: OpenAiCodexAuth;
 };
 
 export type LlmImage = {
@@ -28,6 +36,7 @@ export type AppSettings = {
   apiKey: string;
   model: string;
   providerConfigurations: Record<LlmProvider, LlmProviderConfiguration>;
+  codexAuth?: OpenAiCodexAuth;
   temperature: number;
   thinkingLevel: ThinkingLevel;
   theme: AppTheme;
@@ -92,6 +101,11 @@ export const DEFAULT_SETTINGS: AppSettings = {
       endpoint: 'https://api.openai.com/v1',
       apiKey: '',
       model: 'gpt-4o-mini',
+    },
+    'openai-codex': {
+      endpoint: 'https://chatgpt.com/backend-api/codex',
+      apiKey: '',
+      model: 'gpt-5.5',
     },
   },
   temperature: 0.3,
