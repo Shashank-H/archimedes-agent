@@ -63,6 +63,36 @@ git tag v1.2.3
 git push origin v1.2.3
 ```
 
+## Install scripts
+
+Release consumers can install the latest published desktop bundle directly from this repository.
+
+Linux/macOS bash:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Shashank-H/archimedes-agent/main/scripts/install.sh | bash
+```
+
+Current beta preview:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Shashank-H/archimedes-agent/main/scripts/install.sh | bash -s -- --beta
+```
+
+Windows PowerShell:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/Shashank-H/archimedes-agent/main/scripts/install.ps1 | iex"
+```
+
+Current beta preview:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Shashank-H/archimedes-agent/main/scripts/install.ps1))) -Beta"
+```
+
+The scripts read GitHub Release metadata, pick the OS-specific asset, download it, and run the appropriate installer. Use `--beta` for `install.sh` or `-Beta` for `install.ps1` to install the newest published prerelease. Set `ARCHIMEDES_VERSION=v1.2.3` for `install.sh`, or pass `-Version v1.2.3` when running `install.ps1` from a downloaded file, to install a specific release.
+
 ## Inspecting results
 
 After the tag push:

@@ -64,6 +64,34 @@ Archimedes brings those worlds together:
 
 ## Quick start
 
+### One-line desktop install
+
+Linux/macOS bash:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Shashank-H/archimedes-agent/main/scripts/install.sh | bash
+```
+
+Current beta preview:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Shashank-H/archimedes-agent/main/scripts/install.sh | bash -s -- --beta
+```
+
+Windows PowerShell:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/Shashank-H/archimedes-agent/main/scripts/install.ps1 | iex"
+```
+
+Current beta preview:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Shashank-H/archimedes-agent/main/scripts/install.ps1))) -Beta"
+```
+
+The installers download the latest GitHub Release for your OS. Use `--beta` / `-Beta` to install the newest published prerelease. Linux prefers `.deb` or `.rpm` packages when the matching package manager is present and falls back to an AppImage launcher at `~/.local/bin/archimedes`.
+
 ### Browser/dev mode
 
 Requirements: Node.js 24+, npm, and either Ollama or an OpenAI-compatible vision model endpoint.
