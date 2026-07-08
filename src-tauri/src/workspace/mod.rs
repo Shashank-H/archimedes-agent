@@ -13,6 +13,16 @@ use provider::{create_root, file_entry, list_children, OpenWorkspaceRootDto, Wor
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State, WebviewWindow, WebviewWindowBuilder};
 
+pub fn apply_workspace_window_chrome(window: &WebviewWindow) {
+    #[cfg(any(target_os = "windows", target_os = "linux"))]
+    if let Err(error) = window.set_decorations(false) {
+        eprintln!("Could not apply custom workspace window chrome: {error}");
+    }
+
+    #[cfg(target_os = "macos")]
+    let _ = window;
+}
+
 const NATIVE_OPEN_REQUESTED_EVENT: &str = "native-open-requested";
 
 pub struct WorkspaceState {
@@ -555,6 +565,7 @@ fn create_workspace_window(app: &AppHandle, label: String) -> Result<(), String>
         .map_err(|error| format!("Could not create workspace window: {error}"))?
         .build()
         .map_err(|error| format!("Could not create workspace window: {error}"))?;
+    apply_workspace_window_chrome(&window);
     let _ = window.show();
     let _ = window.set_focus();
     Ok(())

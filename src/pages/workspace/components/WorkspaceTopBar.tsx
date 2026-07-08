@@ -1,9 +1,11 @@
+import { AppTooltip } from '../../../components/AppTooltip';
 import { Icon } from '../../../components/ui/icons';
 import type { AppSettings } from '../../../types';
 import type { WorkspaceRoot, WorkspaceTab } from '../../../lib/workspace/types';
 import { workspaceProviderFactory } from '../../../lib/workspace/factory';
 import { getWorkspacePlatformActions, getWorkspaceRuntime } from '../../../lib/workspace/platformActions';
 import { canSaveWorkspaceTab } from '../../../providers/workspace/tabs/WorkspaceTabManagerContext';
+import { useWorkspaceWindowControls } from '../hooks/useWorkspaceWindowControls';
 
 type WorkspaceTopBarProps = {
   root: WorkspaceRoot | null;
@@ -76,10 +78,11 @@ export function WorkspaceTopBar({
   const openAction = actions.find((action) => action.id === 'open-folder');
   const saveAction = actions.find((action) => action.id === 'save');
   const reviewAction = actions.find((action) => action.id === 'review');
+  const { controls: windowControls } = useWorkspaceWindowControls();
 
   return (
-    <header className="workspace-top-bar" aria-label="Workspace summary">
-      <div className="workspace-top-left">
+    <header className="workspace-top-bar" aria-label="Workspace summary" data-tauri-drag-region>
+      <div className="workspace-top-left" data-tauri-drag-region>
         <button
           type="button"
           className="workspace-chrome-button"
@@ -90,7 +93,7 @@ export function WorkspaceTopBar({
         >
           <Icon name="menu" size={15} />
         </button>
-        <div className="workspace-brand" aria-label="Archimedes">
+        <div className="workspace-brand" aria-label="Archimedes" data-tauri-drag-region>
           <span className="workspace-brand-mark">
             <img className="logo-light" src="/logos/logo-light.svg" alt="" aria-hidden="true" />
             <img className="logo-dark" src="/logos/logo-dark.svg" alt="" aria-hidden="true" />
@@ -99,9 +102,9 @@ export function WorkspaceTopBar({
         </div>
       </div>
 
-      <div className="workspace-current-work" title={activeTab?.path ?? root?.path ?? 'No workspace'}>
-        <span className="workspace-current-breadcrumb">{activeBreadcrumb(root, activeTab)}</span>
-        <span className={`workspace-current-state is-${activeTab?.saveState ?? 'idle'}`}>
+      <div className="workspace-current-work" title={activeTab?.path ?? root?.path ?? 'No workspace'} data-tauri-drag-region>
+        <span className="workspace-current-breadcrumb" data-tauri-drag-region>{activeBreadcrumb(root, activeTab)}</span>
+        <span className={`workspace-current-state is-${activeTab?.saveState ?? 'idle'}`} data-tauri-drag-region>
           {isAssistantBusy ? assistantStatus : saveStateText(activeTab)}
         </span>
       </div>
@@ -174,6 +177,22 @@ export function WorkspaceTopBar({
         <span className="workspace-provider-chip" title={`${settings.provider} · ${settings.model}`}>
           {settings.provider === 'ollama' ? 'Ollama' : 'OpenAI'}
         </span>
+        {windowControls.length > 0 ? (
+          <div className="workspace-window-controls" aria-label="Window controls">
+            {windowControls.map((control) => (
+              <AppTooltip key={control.id} label={control.label} side="bottom" align="center">
+                <button
+                  type="button"
+                  className={`workspace-window-control${control.isDestructive ? ' is-destructive' : ''}`}
+                  onClick={control.onClick}
+                  aria-label={control.label}
+                >
+                  <Icon name={control.icon} size={13} />
+                </button>
+              </AppTooltip>
+            ))}
+          </div>
+        ) : null}
       </div>
     </header>
   );

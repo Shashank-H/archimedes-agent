@@ -30,6 +30,10 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .manage(workspace::WorkspaceState::new())
         .setup(|app| {
+            if let Some(window) = app.get_webview_window("main") {
+                workspace::apply_workspace_window_chrome(&window);
+            }
+
             let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
             let paths = workspace::open_paths_from_cli_args(std::env::args_os().skip(1), cwd);
             app.state::<workspace::WorkspaceState>()
