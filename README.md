@@ -185,6 +185,7 @@ Useful docs:
 - [`docs/USAGE.md`](docs/USAGE.md)
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 - [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)
+- [`docs/RELEASES.md`](docs/RELEASES.md)
 - [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md)
 
 ## License
