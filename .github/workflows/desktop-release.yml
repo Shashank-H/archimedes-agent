@@ -73,12 +73,6 @@ jobs:
             architecture: x64
             bundles: nsis,msi
             prerelease_bundles: nsis
-          - platform: macos
-            runner: macos-13
-            target: x86_64-apple-darwin
-            architecture: x64
-            bundles: ''
-            prerelease_bundles: ''
     steps:
       - name: Checkout
         uses: actions/checkout@v4
