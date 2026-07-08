@@ -483,9 +483,9 @@
 }
 :global(.codex-device-panel) {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
-  align-items: center;
+  align-items: start;
   border: 1px solid color-mix(in srgb, var(--link) 22%, var(--hairline));
   border-radius: var(--radius-md);
   background: linear-gradient(135deg, color-mix(in srgb, var(--link) 7%, var(--canvas)), var(--canvas-soft));
@@ -506,19 +506,21 @@
   text-transform: uppercase;
 }
 :global(.codex-device-code) {
-  width: fit-content;
+  display: inline-flex;
+  width: max-content;
   max-width: 100%;
-  overflow-wrap: anywhere;
+  overflow-x: auto;
+  white-space: nowrap;
   border: 1px solid color-mix(in srgb, var(--ink) 14%, var(--hairline));
   border-radius: 12px;
   background: var(--canvas);
   color: var(--ink);
   padding: 8px 11px;
   font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 800;
-  line-height: 26px;
-  letter-spacing: 0.14em;
+  line-height: 24px;
+  letter-spacing: 0.08em;
   box-shadow: var(--shadow-1);
 }
 :global(.codex-device-helper) {
@@ -529,7 +531,7 @@
 :global(.codex-device-actions) {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 8px;
 }
 :global(.codex-inline-button), :global(.codex-auth-button) {
@@ -554,9 +556,9 @@
   background: var(--canvas-soft-2);
 }
 :global(.codex-auth-footer) {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
   gap: 12px;
 }
 :global(.codex-auth-messages) {
