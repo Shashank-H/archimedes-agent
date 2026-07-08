@@ -43,30 +43,39 @@ updateJsonVersion('src-tauri/tauri.conf.json', (tauriConfig) => {
   tauriConfig.version = version;
 });
 
+const replaceVersion = (content, pattern, relativePath) => {
+  const match = content.match(pattern);
+
+  if (!match) {
+    console.error(`Failed to update version in ${relativePath}`);
+    process.exit(1);
+  }
+
+  if (match[2] === version) {
+    return content;
+  }
+
+  return content.replace(pattern, `$1${version}$3`);
+};
+
 const cargoToml = read('src-tauri/Cargo.toml');
-const updatedCargoToml = cargoToml.replace(
-  /(\[package\][\s\S]*?\nversion = ")(.*?)(")/,
-  `$1${version}$3`,
+write(
+  'src-tauri/Cargo.toml',
+  replaceVersion(
+    cargoToml,
+    /(\[package\][\s\S]*?\r?\nversion = ")(.*?)(")/,
+    'src-tauri/Cargo.toml',
+  ),
 );
-
-if (updatedCargoToml === cargoToml) {
-  console.error('Failed to update version in src-tauri/Cargo.toml');
-  process.exit(1);
-}
-
-write('src-tauri/Cargo.toml', updatedCargoToml);
 
 const cargoLock = read('src-tauri/Cargo.lock');
-const updatedCargoLock = cargoLock.replace(
-  /(\[\[package\]\]\nname = "archimedes-agent"\nversion = ")(.*?)(")/,
-  `$1${version}$3`,
+write(
+  'src-tauri/Cargo.lock',
+  replaceVersion(
+    cargoLock,
+    /(\[\[package\]\]\r?\nname = "archimedes-agent"\r?\nversion = ")(.*?)(")/,
+    'src-tauri/Cargo.lock',
+  ),
 );
-
-if (updatedCargoLock === cargoLock) {
-  console.error('Failed to update version in src-tauri/Cargo.lock');
-  process.exit(1);
-}
-
-write('src-tauri/Cargo.lock', updatedCargoLock);
 
 console.log(`Prepared Archimedes Agent release version ${version}`);
