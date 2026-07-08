@@ -23,7 +23,9 @@ export function useCodexAuth({ settings, onSettingsChange }: UseCodexAuthArgs) {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSigningIn, setIsSigningIn] = useState(false);
+  const [deviceCodeCopied, setDeviceCodeCopied] = useState(false);
   const pollTimeoutRef = useRef<number | null>(null);
+  const copyResetTimeoutRef = useRef<number | null>(null);
   const deadlineRef = useRef<number>(0);
 
   const clearPoll = () => {
@@ -31,14 +33,24 @@ export function useCodexAuth({ settings, onSettingsChange }: UseCodexAuthArgs) {
     pollTimeoutRef.current = null;
   };
 
-  useEffect(() => clearPoll, []);
+  const clearCopyReset = () => {
+    if (copyResetTimeoutRef.current) window.clearTimeout(copyResetTimeoutRef.current);
+    copyResetTimeoutRef.current = null;
+  };
+
+  useEffect(() => () => {
+    clearPoll();
+    clearCopyReset();
+  }, []);
 
   const completeSignIn = (auth: NonNullable<AppSettings['codexAuth']>) => {
     clearPoll();
+    clearCopyReset();
     setIsSigningIn(false);
     setStatus('Signed in with ChatGPT. Save to verify the selected Codex model.');
     setError(null);
     setDeviceAuth(null);
+    setDeviceCodeCopied(false);
     onSettingsChange(applyCodexAuth(settings, auth));
   };
 
@@ -64,17 +76,42 @@ export function useCodexAuth({ settings, onSettingsChange }: UseCodexAuthArgs) {
     }, Math.max(3, auth.intervalSeconds) * 1000);
   };
 
+  const copyDeviceCode = async (auth = deviceAuth) => {
+    if (!auth?.userCode) return false;
+    try {
+      await navigator.clipboard?.writeText(auth.userCode);
+      clearCopyReset();
+      setDeviceCodeCopied(true);
+      copyResetTimeoutRef.current = window.setTimeout(() => {
+        setDeviceCodeCopied(false);
+        copyResetTimeoutRef.current = null;
+      }, 1600);
+      return true;
+    } catch {
+      setDeviceCodeCopied(false);
+      return false;
+    }
+  };
+
+  const openDeviceAuthUrl = async (auth = deviceAuth) => {
+    if (!auth?.verificationUrl) return;
+    await openVerificationUrl(auth.verificationUrl);
+  };
+
   const startSignIn = async () => {
     clearPoll();
+    clearCopyReset();
     setIsSigningIn(true);
+    setDeviceCodeCopied(false);
     setError(null);
     setStatus('Requesting an OpenAI device code...');
     try {
       const auth = await openAiCodexAuthService.startDeviceAuth();
       setDeviceAuth(auth);
-      setStatus('Enter the code in your browser, then return here.');
+      const copied = await copyDeviceCode(auth);
+      setStatus(copied ? 'Device code copied. Paste it in the browser window to finish sign-in.' : 'Paste the device code in the browser window to finish sign-in.');
       deadlineRef.current = Date.now() + Math.min((auth.expiresInSeconds || 900) * 1000, DEVICE_AUTH_TIMEOUT_MS);
-      await openVerificationUrl(auth.verificationUrl);
+      await openDeviceAuthUrl(auth);
       schedulePoll(auth);
     } catch (startError) {
       setIsSigningIn(false);
@@ -85,7 +122,9 @@ export function useCodexAuth({ settings, onSettingsChange }: UseCodexAuthArgs) {
   const signOut = () => {
     clearPoll();
     setIsSigningIn(false);
+    clearCopyReset();
     setDeviceAuth(null);
+    setDeviceCodeCopied(false);
     setStatus('Signed out of OpenAI Codex.');
     setError(null);
     onSettingsChange(applyCodexAuth(settings, { accessToken: '', refreshToken: '', lastRefreshAt: Date.now() }));
@@ -97,6 +136,9 @@ export function useCodexAuth({ settings, onSettingsChange }: UseCodexAuthArgs) {
     error,
     isSigningIn,
     isSignedIn: Boolean(settings.codexAuth?.accessToken),
+    deviceCodeCopied,
+    copyDeviceCode,
+    openDeviceAuthUrl,
     startSignIn,
     signOut,
   };

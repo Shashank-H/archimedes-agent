@@ -441,6 +441,136 @@
   line-height: 15px;
   letter-spacing: -0.11px;
 }
+:global(.codex-auth-card) {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  gap: 14px;
+}
+:global(.codex-auth-main) {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+}
+:global(.codex-auth-icon) {
+  background: color-mix(in srgb, var(--link) 8%, var(--canvas-soft));
+  color: var(--link);
+}
+:global(.codex-auth-title-row) {
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+:global(.codex-auth-pill) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  color: var(--mute);
+  background: var(--canvas-soft);
+  padding: 2px 8px;
+  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 14px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+:global(.codex-auth-pill.is-connected) {
+  color: var(--link);
+  border-color: color-mix(in srgb, var(--link) 28%, var(--hairline));
+  background: color-mix(in srgb, var(--link) 8%, var(--canvas));
+}
+:global(.codex-device-panel) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--link) 22%, var(--hairline));
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--link) 7%, var(--canvas)), var(--canvas-soft));
+  padding: 12px;
+}
+:global(.codex-device-copy) {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+:global(.codex-device-kicker) {
+  color: var(--mute);
+  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 14px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+:global(.codex-device-code) {
+  width: fit-content;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  border: 1px solid color-mix(in srgb, var(--ink) 14%, var(--hairline));
+  border-radius: 12px;
+  background: var(--canvas);
+  color: var(--ink);
+  padding: 8px 11px;
+  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 26px;
+  letter-spacing: 0.14em;
+  box-shadow: var(--shadow-1);
+}
+:global(.codex-device-helper) {
+  color: var(--body);
+  font-size: 12px;
+  line-height: 17px;
+}
+:global(.codex-device-actions) {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+:global(.codex-inline-button), :global(.codex-auth-button) {
+  height: 32px;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+:global(.codex-inline-button) {
+  border: 1px solid var(--hairline);
+  background: var(--canvas);
+  color: var(--ink);
+  padding: 0 11px;
+  box-shadow: var(--shadow-1);
+}
+:global(.codex-inline-button:hover:not(:disabled)), :global(.codex-inline-button:focus-visible) {
+  border-color: color-mix(in srgb, var(--ink) 24%, var(--hairline));
+  background: var(--canvas-soft-2);
+}
+:global(.codex-auth-footer) {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+:global(.codex-auth-messages) {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+:global(.codex-auth-status) {
+  color: var(--mute);
+}
+:global(.codex-auth-button) {
+  flex: 0 0 auto;
+  padding: 0 14px;
+}
 :global(.settings-switch) {
   width: 42px;
   min-width: 42px;
@@ -1016,6 +1146,22 @@
   border-radius: var(--radius-lg);
   background: var(--canvas);
   box-shadow: var(--shadow-1);
+}
+
+@media (max-width: 560px) {
+  :global(.codex-device-panel), :global(.codex-auth-footer) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  :global(.codex-auth-footer) {
+    display: grid;
+    align-items: stretch;
+  }
+  :global(.codex-device-actions) {
+    justify-content: stretch;
+  }
+  :global(.codex-inline-button), :global(.codex-auth-button) {
+    width: 100%;
+  }
 }
 
 :global(.theme-dark .send-button), :global(.theme-dark .settings-section > button), :global(.theme-dark .provider-config-actions > button) { background: #fff; border-color: #fff; color: #171717; }

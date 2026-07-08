@@ -167,28 +167,60 @@ export function SettingsPage() {
                 )}
                 {settings.provider === 'openai-codex' && (
                   <div className="settings-option-card codex-auth-card">
-                    <span className="settings-option-icon" aria-hidden="true">
-                      <Icon name="plug" size={16} />
-                    </span>
-                    <div className="settings-option-copy">
-                      <div className="settings-option-title-row">
-                        <span className="settings-option-title">ChatGPT OAuth</span>
-                      </div>
-                      <p className="settings-option-description">
-                        Sign in with ChatGPT to use OpenAI Codex models. Tokens are stored locally in this app.
-                      </p>
-                      {codexAuth.deviceAuth && (
-                        <p className="settings-option-warning">
-                          Open {codexAuth.deviceAuth.verificationUrl} and enter code <strong>{codexAuth.deviceAuth.userCode}</strong>.
+                    <div className="codex-auth-main">
+                      <span className="settings-option-icon codex-auth-icon" aria-hidden="true">
+                        <Icon name={codexAuth.isSignedIn ? 'check' : 'plug'} size={16} />
+                      </span>
+                      <div className="settings-option-copy">
+                        <div className="settings-option-title-row codex-auth-title-row">
+                          <span className="settings-option-title">ChatGPT OAuth</span>
+                          <span className={`codex-auth-pill${codexAuth.isSignedIn ? ' is-connected' : ''}`}>
+                            {codexAuth.isSignedIn ? 'Connected' : codexAuth.isSigningIn ? 'Waiting for browser' : 'Not connected'}
+                          </span>
+                        </div>
+                        <p className="settings-option-description">
+                          Sign in with ChatGPT to use OpenAI Codex models. The device code is copied automatically and tokens stay local to this app.
                         </p>
-                      )}
-                      {codexAuth.status && <p className="settings-option-description">{codexAuth.status}</p>}
-                      {codexAuth.error && <p className="settings-field-error">{codexAuth.error}</p>}
+                      </div>
                     </div>
-                    <button type="button" className="secondary-settings-button" onClick={codexAuth.isSignedIn ? codexAuth.signOut : codexAuth.startSignIn} disabled={codexAuth.isSigningIn}>
-                      <Icon name={codexAuth.isSignedIn ? 'x' : 'plug'} size={15} />
-                      {codexAuth.isSigningIn ? 'Waiting...' : codexAuth.isSignedIn ? 'Sign out' : 'Sign in'}
-                    </button>
+
+                    {codexAuth.deviceAuth && (
+                      <div className="codex-device-panel" aria-live="polite">
+                        <div className="codex-device-copy">
+                          <span className="codex-device-kicker">Device code</span>
+                          <code className="codex-device-code">{codexAuth.deviceAuth.userCode}</code>
+                          <span className="codex-device-helper">
+                            {codexAuth.deviceCodeCopied ? 'Copied — paste this in the browser.' : 'Paste this code in the ChatGPT browser window.'}
+                          </span>
+                        </div>
+                        <div className="codex-device-actions">
+                          <button type="button" className="codex-inline-button" onClick={() => void codexAuth.copyDeviceCode()}>
+                            <Icon name={codexAuth.deviceCodeCopied ? 'check' : 'copy'} size={14} />
+                            {codexAuth.deviceCodeCopied ? 'Copied' : 'Copy code'}
+                          </button>
+                          <button type="button" className="codex-inline-button" onClick={() => void codexAuth.openDeviceAuthUrl()}>
+                            <Icon name="openExternal" size={14} />
+                            Open page
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="codex-auth-footer">
+                      <div className="codex-auth-messages">
+                        {codexAuth.status && <p className="settings-option-description codex-auth-status">{codexAuth.status}</p>}
+                        {codexAuth.error && <p className="settings-field-error">{codexAuth.error}</p>}
+                      </div>
+                      <button
+                        type="button"
+                        className="secondary-settings-button codex-auth-button"
+                        onClick={codexAuth.isSignedIn ? codexAuth.signOut : codexAuth.startSignIn}
+                        disabled={codexAuth.isSigningIn && !codexAuth.deviceAuth}
+                      >
+                        <Icon name={codexAuth.isSignedIn ? 'x' : 'plug'} size={15} />
+                        {codexAuth.isSigningIn ? 'Restart sign-in' : codexAuth.isSignedIn ? 'Sign out' : 'Sign in with ChatGPT'}
+                      </button>
+                    </div>
                   </div>
                 )}
                 <label>
