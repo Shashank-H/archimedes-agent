@@ -1,8 +1,14 @@
-import { invoke } from '@tauri-apps/api/core';
+import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
 import type { AppSettings, LlmChatMessage, OpenAiCodexAuth } from '../../types';
 import { BaseLlmProvider, type LlmModelOption, type StreamLlmChatArgs } from './base';
 
 const CODEX_BASE_URL = 'https://chatgpt.com/backend-api/codex';
+const CODEX_OAUTH_CLIENT_ID = 'app_EMoamEEZ73f0CkXaXp7hrann';
+const CODEX_AUTH_ISSUER = 'https://auth.openai.com';
+const CODEX_OAUTH_TOKEN_URL = `${CODEX_AUTH_ISSUER}/oauth/token`;
+const CODEX_DEVICE_USER_CODE_URL = `${CODEX_AUTH_ISSUER}/api/accounts/deviceauth/usercode`;
+const CODEX_DEVICE_TOKEN_URL = `${CODEX_AUTH_ISSUER}/api/accounts/deviceauth/token`;
+const CODEX_DEVICE_REDIRECT_URI = `${CODEX_AUTH_ISSUER}/deviceauth/callback`;
 const CODEX_ACCESS_TOKEN_REFRESH_SKEW_MS = 120_000;
 const CODEX_DEFAULT_MODELS = ['gpt-5.5', 'gpt-5.4-mini', 'gpt-5.4', 'gpt-5.3-codex', 'gpt-5.3-codex-spark'];
 
@@ -15,9 +21,25 @@ export type CodexDeviceAuthStart = {
 };
 
 type CodexTokenResponse = {
-  accessToken: string;
-  refreshToken: string;
+  accessToken?: string;
+  refreshToken?: string;
   expiresIn?: number;
+  access_token?: string;
+  refresh_token?: string;
+  expires_in?: number;
+};
+
+type CodexDeviceAuthUserCodeResponse = {
+  user_code?: string;
+  device_auth_id?: string;
+  verification_url?: string;
+  interval?: number | string;
+  expires_in?: number | string;
+};
+
+type CodexDeviceAuthPollResponse = {
+  authorization_code?: string;
+  code_verifier?: string;
 };
 
 type CodexHttpResponse = {
@@ -37,7 +59,7 @@ function isTauriRuntime() {
 
 function requireTauriRuntime() {
   if (!isTauriRuntime()) {
-    throw new Error('OpenAI Codex sign-in is available in the desktop app because ChatGPT OAuth requires the native network bridge.');
+    throw new Error('OpenAI Codex sign-in is available in the desktop app because ChatGPT OAuth requires the Tauri HTTP plugin.');
   }
 }
 
@@ -45,11 +67,46 @@ function normalizeBaseUrl(endpoint: string) {
   return (endpoint || CODEX_BASE_URL).replace(/\/+$/, '');
 }
 
+function jsonNumber(value: number | string | undefined, fallback: number) {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = Number(value.trim());
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return fallback;
+}
+
+async function codexFetch(input: string, init: RequestInit): Promise<Response> {
+  requireTauriRuntime();
+  return tauriFetch(input, init) as Promise<Response>;
+}
+
+async function parseJsonOrText(response: Response): Promise<CodexHttpResponse> {
+  const status = response.status;
+  const text = await response.text();
+  if (!text.trim()) return { status, body: null };
+  try {
+    return { status, body: JSON.parse(text) };
+  } catch {
+    return { status, body: { message: text } };
+  }
+}
+
+function assertOk(response: CodexHttpResponse, operation: string) {
+  if (response.status < 200 || response.status >= 300) {
+    throw new Error(`${operation} failed with HTTP ${response.status}: ${JSON.stringify(response.body)}`);
+  }
+}
+
 function toCodexAuth(tokens: CodexTokenResponse): OpenAiCodexAuth {
-  const expiresInMs = Number(tokens.expiresIn ?? 3600) * 1000;
+  const accessToken = tokens.accessToken || tokens.access_token;
+  const refreshToken = tokens.refreshToken || tokens.refresh_token;
+  if (!accessToken) throw new Error('OpenAI token response did not include an access token.');
+  if (!refreshToken) throw new Error('OpenAI token response did not include a refresh token.');
+  const expiresInMs = Number(tokens.expiresIn ?? tokens.expires_in ?? 3600) * 1000;
   return {
-    accessToken: tokens.accessToken,
-    refreshToken: tokens.refreshToken,
+    accessToken,
+    refreshToken,
     lastRefreshAt: Date.now(),
     expiresAt: Date.now() + expiresInMs,
   };
@@ -190,20 +247,77 @@ function toModelOptions(body: unknown): LlmModelOption[] {
 
 export class OpenAiCodexAuthService {
   async startDeviceAuth(): Promise<CodexDeviceAuthStart> {
-    requireTauriRuntime();
-    return invoke<CodexDeviceAuthStart>('codex_device_auth_start');
+    const response = await codexFetch(CODEX_DEVICE_USER_CODE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ client_id: CODEX_OAUTH_CLIENT_ID }),
+    });
+    const parsed = await parseJsonOrText(response);
+    assertOk(parsed, 'OpenAI device code request');
+    const payload = parsed.body as CodexDeviceAuthUserCodeResponse;
+    if (!payload?.user_code || !payload.device_auth_id) {
+      throw new Error(`OpenAI device code response was missing required fields: ${JSON.stringify(parsed.body)}`);
+    }
+
+    return {
+      userCode: payload.user_code,
+      deviceAuthId: payload.device_auth_id,
+      verificationUrl: payload.verification_url || `${CODEX_AUTH_ISSUER}/codex/device`,
+      intervalSeconds: Math.max(3, jsonNumber(payload.interval, 5)),
+      expiresInSeconds: jsonNumber(payload.expires_in, 900),
+    };
   }
 
   async pollDeviceAuth(deviceAuthId: string, userCode: string): Promise<OpenAiCodexAuth | null> {
-    requireTauriRuntime();
-    const tokens = await invoke<CodexTokenResponse | null>('codex_device_auth_poll', { deviceAuthId, userCode });
-    return tokens ? toCodexAuth(tokens) : null;
+    const response = await codexFetch(CODEX_DEVICE_TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ device_auth_id: deviceAuthId, user_code: userCode }),
+    });
+    if (response.status === 403 || response.status === 404) return null;
+
+    const parsed = await parseJsonOrText(response);
+    assertOk(parsed, 'OpenAI device authorization polling');
+    const payload = parsed.body as CodexDeviceAuthPollResponse;
+    if (!payload?.authorization_code || !payload.code_verifier) {
+      throw new Error(`OpenAI device authorization response was missing required fields: ${JSON.stringify(parsed.body)}`);
+    }
+
+    const tokenResponse = await codexFetch(CODEX_OAUTH_TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code: payload.authorization_code,
+        redirect_uri: CODEX_DEVICE_REDIRECT_URI,
+        client_id: CODEX_OAUTH_CLIENT_ID,
+        code_verifier: payload.code_verifier,
+      }).toString(),
+    });
+    const token = await parseJsonOrText(tokenResponse);
+    assertOk(token, 'OpenAI token exchange');
+    return toCodexAuth(token.body as CodexTokenResponse);
   }
 
   async refresh(refreshToken: string): Promise<OpenAiCodexAuth> {
-    requireTauriRuntime();
-    const tokens = await invoke<CodexTokenResponse>('codex_refresh_token', { refreshToken });
-    return toCodexAuth(tokens);
+    if (!refreshToken.trim()) throw new Error('OpenAI Codex session is missing a refresh token. Sign in again.');
+    const response = await codexFetch(CODEX_OAUTH_TOKEN_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Accept: 'application/json',
+        'User-Agent': 'archimedes-agent/0.1.0',
+      },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+        client_id: CODEX_OAUTH_CLIENT_ID,
+      }).toString(),
+    });
+    const parsed = await parseJsonOrText(response);
+    assertOk(parsed, 'OpenAI Codex token refresh');
+    const tokens = parsed.body as CodexTokenResponse;
+    return toCodexAuth({ ...tokens, refreshToken: tokens.refreshToken || refreshToken });
   }
 }
 
@@ -232,17 +346,24 @@ export class OpenAiCodexProvider extends BaseLlmProvider {
   }
 
   private async codexRequest(settings: AppSettings, path: string, body: unknown, onSettingsChange?: (settings: AppSettings) => void) {
-    requireTauriRuntime();
     const auth = await this.getAuth(settings, onSettingsChange);
-    const requestBody = body === undefined ? null : body;
-    const response = await invoke<CodexHttpResponse>('codex_http_request', {
+    const accountId = extractCodexAccountId(auth.accessToken);
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${auth.accessToken}`,
+      Accept: 'application/json',
+      'OpenAI-Beta': 'responses=experimental',
+      originator: 'archimedes',
+      'User-Agent': 'archimedes-agent/0.1.0',
+    };
+    if (accountId) headers['chatgpt-account-id'] = accountId;
+    if (body !== undefined) headers['Content-Type'] = 'application/json';
+
+    const rawResponse = await codexFetch(`${normalizeBaseUrl(settings.endpoint)}${path}`, {
       method: body === undefined ? 'GET' : 'POST',
-      baseUrl: normalizeBaseUrl(settings.endpoint),
-      path,
-      accessToken: auth.accessToken,
-      accountId: extractCodexAccountId(auth.accessToken),
-      body: requestBody,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
     });
+    const response = await parseJsonOrText(rawResponse);
     if (response.status < 200 || response.status >= 300) {
       throw new Error(extractError(response.body, response.status));
     }

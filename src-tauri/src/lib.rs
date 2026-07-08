@@ -1,4 +1,3 @@
-mod codex;
 mod workspace;
 
 use std::path::PathBuf;
@@ -26,6 +25,7 @@ pub fn run() {
     }));
 
     let builder = builder
+        .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .manage(workspace::WorkspaceState::new())
@@ -49,10 +49,6 @@ pub fn run() {
             workspace::read_workspace_file,
             workspace::create_workspace_file,
             workspace::write_workspace_file,
-            codex::codex_device_auth_start,
-            codex::codex_device_auth_poll,
-            codex::codex_refresh_token,
-            codex::codex_http_request,
         ]);
 
     let app = builder
