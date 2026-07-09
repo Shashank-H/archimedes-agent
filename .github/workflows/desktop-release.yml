@@ -86,11 +86,10 @@ jobs:
           #   runner: macos-13
           #   target: x86_64-apple-darwin
           #   architecture: x64
-          #   bundles: ''
-          #   prerelease_bundles: ''
+          #   bundles: dmg
+          #   prerelease_bundles: dmg
           #   artifact_paths: |
           #     src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
-          #     src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz
     steps:
       - name: Checkout
         uses: actions/checkout@v4
