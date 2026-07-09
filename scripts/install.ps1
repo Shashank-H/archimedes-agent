@@ -132,12 +132,12 @@ function Install-Asset {
     $process = Start-Process -FilePath "msiexec.exe" -ArgumentList $arguments -Wait -PassThru
   } elseif ($extension -eq ".exe") {
     Write-Step "Starting Windows installer"
-    $arguments = @()
     if ($SilentInstall) {
       # Tauri NSIS installers support /S for silent mode.
-      $arguments += '/S'
+      $process = Start-Process -FilePath $Path -ArgumentList '/S' -Wait -PassThru
+    } else {
+      $process = Start-Process -FilePath $Path -Wait -PassThru
     }
-    $process = Start-Process -FilePath $Path -ArgumentList $arguments -Wait -PassThru
   } else {
     Fail "Unsupported Windows installer type: $extension"
   }
