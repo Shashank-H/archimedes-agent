@@ -1,9 +1,9 @@
-import { useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import workspaceShellStyles from './WorkspaceShell.module.css';
 import { DiagramCanvas } from '../../../components/diagram/DiagramCanvas';
 import { useChat } from '../../../providers/chat/ChatContext';
 import { useWorkspace } from '../../../providers/workspace/WorkspaceContext';
-import { useWorkspaceTabManager } from '../../../providers/workspace/tabs/WorkspaceTabManagerContext';
+import { isAppSettingsTab, useWorkspaceTabManager } from '../../../providers/workspace/tabs/WorkspaceTabManagerContext';
 import { SidebarResizer } from './SidebarResizer';
 import { UnsupportedFileView } from './UnsupportedFileView';
 import { WorkspaceActivityRail } from './WorkspaceActivityRail';
@@ -11,9 +11,10 @@ import { WorkspaceExplorer } from './WorkspaceExplorer';
 import { WorkspaceStatusBar } from './WorkspaceStatusBar';
 import { WorkspaceTabs } from './WorkspaceTabs';
 import { WorkspaceTopBar } from './WorkspaceTopBar';
+import { SettingsEditorTab } from '../../settings/SettingsEditorTab';
 import { useSidebarResize } from '../hooks/useSidebarResize';
 
-function dispatchAssistantPaneEvent(eventName: 'archimedes:open-settings' | 'archimedes:open-chat') {
+function dispatchAssistantPaneEvent(eventName: 'archimedes:open-chat') {
   window.dispatchEvent(new Event(eventName));
 }
 
@@ -34,6 +35,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
     clearActiveCanvasContents,
     saveTab,
     openUntitledTab,
+    openAppSettingsTab,
   } = useWorkspaceTabManager();
   const { handleWorkspaceSnapshotChanged, handleReview, isBusy, status } = useChat();
   const { sidebarWidth, handleResizePointerDown, handleResizeKeyDown } = useSidebarResize();
@@ -41,8 +43,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
   const [isAssistantCollapsed, setIsAssistantCollapsed] = useState(false);
 
   const handleOpenSettings = () => {
-    setIsAssistantCollapsed(false);
-    dispatchAssistantPaneEvent('archimedes:open-settings');
+    openAppSettingsTab();
   };
 
   const handleToggleAssistant = () => {
@@ -50,6 +51,11 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
     setIsAssistantCollapsed(nextIsCollapsed);
     if (!nextIsCollapsed) dispatchAssistantPaneEvent('archimedes:open-chat');
   };
+
+  useEffect(() => {
+    window.addEventListener('archimedes:open-settings', openAppSettingsTab);
+    return () => window.removeEventListener('archimedes:open-settings', openAppSettingsTab);
+  }, [openAppSettingsTab]);
 
   return (
     <main
@@ -123,6 +129,8 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
                   <p>Reading file contents…</p>
                 </div>
               </div>
+            ) : isAppSettingsTab(activeTab) ? (
+              <SettingsEditorTab />
             ) : activeTab && !activeTab.isSupported ? (
               <UnsupportedFileView tab={activeTab} />
             ) : activeTab ? (

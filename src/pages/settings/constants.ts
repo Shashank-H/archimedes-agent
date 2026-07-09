@@ -1,5 +1,7 @@
 export const PROJECT_GITHUB_URL = 'https://github.com/Shashank-H/archimedes-agent';
+export const PERSONAL_SITE_URL = 'https://shashank.nirmaker.com/';
 export const X_PROFILE_URL = 'https://x.com/ShashankH_';
+export const LINKEDIN_PROFILE_URL = 'https://www.linkedin.com/in/shashank-h/';
 export const OLLAMA_VISION_MODELS_URL = 'https://ollama.com/search?c=vision';
 
 export const RECOMMENDED_VISION_MODELS = [

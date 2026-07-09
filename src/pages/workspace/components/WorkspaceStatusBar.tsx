@@ -1,6 +1,7 @@
 import type { AppSettings, DiagramSnapshot } from '../../../types';
 import type { WorkspaceRoot, WorkspaceTab } from '../../../lib/workspace/types';
 import { getWorkspaceRuntime, getWorkspaceRuntimeLabel } from '../../../lib/workspace/platformActions';
+import { isAppSettingsTab } from '../../../providers/workspace/tabs/WorkspaceTabManagerContext';
 
 type WorkspaceStatusBarProps = {
   root: WorkspaceRoot | null;
@@ -17,6 +18,7 @@ function countLiveElements(snapshot: DiagramSnapshot | null) {
 
 function saveStateLabel(activeTab: WorkspaceTab | null) {
   if (!activeTab) return 'No file';
+  if (isAppSettingsTab(activeTab)) return 'App settings';
   if (!activeTab.isSupported) return 'Unsupported';
   if (activeTab.loadState === 'loading') return 'Loading';
   if (activeTab.loadState === 'error') return 'Load failed';
@@ -37,8 +39,8 @@ export function WorkspaceStatusBar({
 }: WorkspaceStatusBarProps) {
   const runtime = getWorkspaceRuntime();
   const elementCount = countLiveElements(activeSnapshot);
-  const providerLabel = root?.providerKind ?? activeTab?.providerKind ?? 'untitled';
-  const rootLabel = root?.name ?? (activeTab?.isUntitled ? 'Untitled' : 'No folder');
+  const providerLabel = isAppSettingsTab(activeTab) ? 'app' : root?.providerKind ?? activeTab?.providerKind ?? 'untitled';
+  const rootLabel = isAppSettingsTab(activeTab) ? 'Workspace' : root?.name ?? (activeTab?.isUntitled ? 'Untitled' : 'No folder');
   const fileLabel = activeTab?.title ?? 'No document';
 
   return (
