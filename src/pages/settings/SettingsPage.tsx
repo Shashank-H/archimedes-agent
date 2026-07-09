@@ -445,16 +445,16 @@ export function SettingsPage() {
                 ariaLabel="Theme"
                 value={settings.theme}
                 options={[
-                  { value: 'system', label: 'System (follow OS)' },
                   { value: 'light', label: 'Light' },
                   { value: 'dark', label: 'Dark' },
                   { value: 'coffee', label: 'Coffee (warm dark)' },
+                  { value: 'sepia', label: 'Sepia (warm light)' },
                 ]}
                 onChange={(value) => onSettingsChange({ ...settings, theme: value as any })}
                 className="settings-theme-select"
               />
             </label>
-            <p className="settings-hint">Multiple color themes supported. “System” follows your OS preference and updates live.</p>
+            <p className="settings-hint">Choose a color scheme. “System” preference is respected on first run / when no explicit theme is saved.</p>
           </div>
         </section>
         <section id="settings-privacy" className={sectionClassName('privacy')}>

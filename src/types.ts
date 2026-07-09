@@ -2,7 +2,7 @@ import type { AppState, BinaryFiles, ExcalidrawImperativeAPI } from '@excalidraw
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types';
 
 export type ThinkingLevel = 'off' | 'low' | 'medium' | 'high';
-export type AppTheme = 'system' | 'light' | 'dark' | 'coffee';
+export type AppTheme = 'light' | 'dark' | 'coffee' | 'sepia';
 export type LlmProvider = 'ollama' | 'openai-compatible' | 'openai-codex';
 
 export type OpenAiCodexAuth = {
@@ -110,7 +110,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   },
   temperature: 0.3,
   thinkingLevel: 'low',
-  theme: 'system',
+  theme: 'light',
   autoReview: true,
   includeHistoryInProactiveReviews: false,
   sendAnonymizedUsageLogs: true,

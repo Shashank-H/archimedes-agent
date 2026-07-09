@@ -29,14 +29,9 @@ function isIsolatedWindowStorage() {
 }
 
 export class AppStorage {
-  private getSystemTheme(): 'light' | 'dark' {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return 'light';
+  private getBrowserTheme(): AppSettings['theme'] {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return DEFAULT_SETTINGS.theme;
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  }
-
-  /** @deprecated use getSystemTheme */
-  private getBrowserTheme(): 'light' | 'dark' {
-    return this.getSystemTheme();
   }
 
   private storageForKey(key: string): Storage {
@@ -72,12 +67,12 @@ export class AppStorage {
   }
 
   loadSettings(): AppSettings {
-    // theme resolution supports multiple named color themes; 'system' resolves to light/dark at runtime
+    const browserTheme = this.getBrowserTheme();
     const defaultProviderConfigurations = llmProviderFactory.createDefaultConfigurations();
     const settings = this.readJson<Partial<AppSettings>>(SETTINGS_KEY, {
       ...DEFAULT_SETTINGS,
       providerConfigurations: defaultProviderConfigurations,
-      theme: 'system',
+      theme: browserTheme,
     });
     const provider = settings.provider ?? DEFAULT_SETTINGS.provider;
     const providerConfigurations = {
@@ -101,8 +96,10 @@ export class AppStorage {
       proactiveCooldownMs: normalizeReviewTimeoutMs(settings.proactiveCooldownMs ?? DEFAULT_SETTINGS.proactiveCooldownMs),
       providerConfigurationTestedKey: settings.providerConfigurationTestedKey ?? DEFAULT_SETTINGS.providerConfigurationTestedKey,
       theme: (() => {
-        const validThemes: AppSettings['theme'][] = ['system', 'light', 'dark', 'coffee'];
-        return (settings.theme && (validThemes as readonly string[]).includes(settings.theme)) ? settings.theme : 'system';
+        const t = settings.theme;
+        const valid = ['light', 'dark', 'coffee', 'sepia'];
+        if (t && valid.includes(t)) return t;
+        return browserTheme;
       })(),
     };
   }

@@ -47,7 +47,7 @@ export const SETTINGS_SECTIONS: readonly SettingsSectionDefinition[] = [
     label: 'Appearance',
     eyebrow: 'Workspace',
     title: 'Appearance',
-    description: 'Choose the workspace theme used by the editor, assistant, and settings.',
+    description: 'Choose a color scheme for the workspace (Light, Dark, Coffee, Sepia and more). System preference is used by default on first run.',
     iconName: 'settings',
   },
   {

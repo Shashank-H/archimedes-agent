@@ -53,7 +53,7 @@ function entryForPathInRoot(path: string, root: WorkspaceRoot): WorkspaceEntry {
 
 function WorkspaceContextProvider({ children }: { children: ReactNode }) {
   const apiRef = useRef<ExcalidrawApi | null>(null);
-  const { settings, handleSettingsChange, effectiveTheme } = useWorkspaceSettings();
+  const { settings, handleSettingsChange, effectiveBase } = useWorkspaceSettings();
   const tree = useWorkspaceTree();
   const { openEntryAsTab, setWorkspaceSaveTarget } = useWorkspaceTabManager();
 
@@ -152,7 +152,7 @@ function WorkspaceContextProvider({ children }: { children: ReactNode }) {
         treeError: tree.treeError,
         setDiagramApi,
         handleSettingsChange,
-        effectiveTheme,
+        effectiveBase,
         openWorkspaceRoot,
         refreshWorkspaceRoot: tree.refreshWorkspaceRoot,
         toggleDirectory: tree.toggleDirectory,
