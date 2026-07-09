@@ -29,9 +29,14 @@ function isIsolatedWindowStorage() {
 }
 
 export class AppStorage {
-  private getBrowserTheme(): AppSettings['theme'] {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return DEFAULT_SETTINGS.theme;
+  private getSystemTheme(): 'light' | 'dark' {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return 'light';
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+
+  /** @deprecated use getSystemTheme */
+  private getBrowserTheme(): 'light' | 'dark' {
+    return this.getSystemTheme();
   }
 
   private storageForKey(key: string): Storage {
@@ -67,12 +72,12 @@ export class AppStorage {
   }
 
   loadSettings(): AppSettings {
-    const browserTheme = this.getBrowserTheme();
+    // theme resolution supports multiple named color themes; 'system' resolves to light/dark at runtime
     const defaultProviderConfigurations = llmProviderFactory.createDefaultConfigurations();
     const settings = this.readJson<Partial<AppSettings>>(SETTINGS_KEY, {
       ...DEFAULT_SETTINGS,
       providerConfigurations: defaultProviderConfigurations,
-      theme: browserTheme,
+      theme: 'system',
     });
     const provider = settings.provider ?? DEFAULT_SETTINGS.provider;
     const providerConfigurations = {
@@ -95,7 +100,10 @@ export class AppStorage {
       proactiveDelayMs: normalizeReviewDelayMs(settings.proactiveDelayMs ?? DEFAULT_SETTINGS.proactiveDelayMs),
       proactiveCooldownMs: normalizeReviewTimeoutMs(settings.proactiveCooldownMs ?? DEFAULT_SETTINGS.proactiveCooldownMs),
       providerConfigurationTestedKey: settings.providerConfigurationTestedKey ?? DEFAULT_SETTINGS.providerConfigurationTestedKey,
-      theme: settings.theme || browserTheme,
+      theme: (() => {
+        const validThemes: AppSettings['theme'][] = ['system', 'light', 'dark', 'coffee'];
+        return (settings.theme && (validThemes as readonly string[]).includes(settings.theme)) ? settings.theme : 'system';
+      })(),
     };
   }
 
