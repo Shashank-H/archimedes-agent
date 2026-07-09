@@ -14,11 +14,16 @@ import { useModelSelection } from '../../hooks/useModelSelection';
 import { useMaskedApiKeyInput } from '../../hooks/useMaskedApiKeyInput';
 import { useCodexAuth } from '../../hooks/useCodexAuth';
 import { useReviewTimingSettings } from '../../hooks/useReviewTimingSettings';
-import { settingsValidationKey } from '../../lib/settingsValidation';
 import type { LlmProvider } from '../../types';
-import { OLLAMA_OS_OPTIONS, OLLAMA_VISION_MODELS_URL, OPEN_SOURCE_CREDITS, PROJECT_GITHUB_URL, RECOMMENDED_VISION_MODELS, X_PROFILE_URL } from './constants';
-import { SettingsAccordion } from './components/SettingsAccordion';
+import { LINKEDIN_PROFILE_URL, OLLAMA_OS_OPTIONS, OLLAMA_VISION_MODELS_URL, OPEN_SOURCE_CREDITS, PERSONAL_SITE_URL, PROJECT_GITHUB_URL, RECOMMENDED_VISION_MODELS, X_PROFILE_URL } from './constants';
+import { SETTINGS_SECTIONS, type SettingsSectionId } from './settingsSections';
 import { useOllamaOriginInstructions } from './hooks/useOllamaOriginInstructions';
+
+function getInitialSettingsSectionId(): SettingsSectionId {
+  if (typeof window === 'undefined') return 'provider';
+  const hashSectionId = window.location.hash.replace(/^#settings-/, '') as SettingsSectionId;
+  return SETTINGS_SECTIONS.some((section) => section.id === hashSectionId) ? hashSectionId : 'provider';
+}
 
 export function SettingsPage() {
   const { settings, handleSettingsChange: onSettingsChange } = useWorkspace();
@@ -27,13 +32,7 @@ export function SettingsPage() {
     currentModelValidationError: modelValidationError,
     handleTestConnection: onTestConnection,
   } = useChat();
-  const providerConfigurationKey = settingsValidationKey(settings);
-  const providerConfigurationIsTested = settings.providerConfigurationTestedKey === providerConfigurationKey;
-  const [showCredits, setShowCredits] = useState(false);
-  const [showUsageLogsInfo, setShowUsageLogsInfo] = useState(false);
-  const [providerConfigOpen, setProviderConfigOpen] = useState(!providerConfigurationIsTested);
-  const [reviewTimingOpen, setReviewTimingOpen] = useState(false);
-  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [activeSectionId, setActiveSectionId] = useState<SettingsSectionId>(getInitialSettingsSectionId);
   const [showOllamaSetup, setShowOllamaSetup] = useState(false);
   const [copiedCommand, setCopiedCommand] = useState<string | null>(null);
   const modelListboxId = useId();
@@ -55,21 +54,12 @@ export function SettingsPage() {
   const ollamaOriginInstructions = useOllamaOriginInstructions(currentSiteOrigin);
 
 
-  useEffect(() => {
-    setProviderConfigOpen(!providerConfigurationIsTested);
-  }, [providerConfigurationIsTested, providerConfigurationKey]);
 
   useEffect(() => {
-    if (!showCredits && !showOllamaSetup && !showUsageLogsInfo) return;
-    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      setShowCredits(false);
-      setShowOllamaSetup(false);
-      setShowUsageLogsInfo(false);
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showCredits, showOllamaSetup, showUsageLogsInfo]);
+    const handleHashChange = () => setActiveSectionId(getInitialSettingsSectionId());
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -115,19 +105,55 @@ export function SettingsPage() {
   };
 
   const handleSaveProviderConfiguration = async () => {
-    const isValid = await onTestConnection();
-    if (isValid) setProviderConfigOpen(false);
+    await onTestConnection();
+  };
+
+  const openSection = (sectionId: SettingsSectionId) => {
+    setActiveSectionId(sectionId);
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', `#settings-${sectionId}`);
+    }
+  };
+
+  const sectionClassName = (sectionId: SettingsSectionId) => (
+    `settings-editor-section${activeSectionId === sectionId ? ' is-active' : ' is-hidden'}`
+  );
+
+  const renderSectionHeader = (sectionId: SettingsSectionId) => {
+    const section = SETTINGS_SECTIONS.find((candidate) => candidate.id === sectionId);
+    if (!section) return null;
+
+    return (
+      <header className="settings-editor-section-header">
+        <p className="settings-editor-eyebrow">{section.eyebrow}</p>
+        <h2>{section.title}</h2>
+        <p>{section.description}</p>
+      </header>
+    );
   };
 
   return (
     <>
-      <section className={`settings-section ${settingsPageStyles.moduleAnchor}`}>
-          <SettingsAccordion
-            open={providerConfigOpen}
-            onOpenChange={setProviderConfigOpen}
-            title="Provider configuration"
-            summary={`${providerMetadata.label} · ${settings.model}`}
-          >
+    <section className={`settings-section settings-editor-page ${settingsPageStyles.moduleAnchor}`}>
+      <aside className="settings-editor-sidenav" aria-label="App settings sections">
+        <nav>
+          {SETTINGS_SECTIONS.map((section) => (
+            <button
+              key={section.id}
+              type="button"
+              className={activeSectionId === section.id ? 'is-active' : undefined}
+              onClick={() => openSection(section.id)}
+            >
+              <Icon name={section.iconName} size={15} />
+              <span>{section.label}</span>
+            </button>
+          ))}
+        </nav>
+      </aside>
+      <div className="settings-editor-scroll">
+        <section id="settings-provider" className={sectionClassName('provider')}>
+          {renderSectionHeader('provider')}
+          <div className="settings-editor-card provider-config-content">
                 <label>
                   Provider
                   <CustomSelect
@@ -303,15 +329,11 @@ export function SettingsPage() {
                     {testConnectionLabel}
                   </button>
                 </div>
-          </SettingsAccordion>
-          <SettingsAccordion
-            open={reviewTimingOpen}
-            onOpenChange={setReviewTimingOpen}
-            onClosing={reviewTiming.resetDraft}
-            title="Proactive review timing"
-            summary={`${reviewTiming.proactiveDelaySeconds}s debounce · ${reviewTiming.proactiveTimeoutSeconds}s timeout`}
-          >
-              <div className="settings-timing-content">
+          </div>
+        </section>
+        <section id="settings-assistant" className={sectionClassName('assistant')}>
+          {renderSectionHeader('assistant')}
+          <div className="settings-editor-card settings-timing-content">
                 <p className="settings-option-description">
                   Tune how quickly Archimedes reviews changes while proactive mode is enabled.
                 </p>
@@ -360,37 +382,14 @@ export function SettingsPage() {
                     type="button"
                     onClick={() => {
                       reviewTiming.saveReviewTiming();
-                      setReviewTimingOpen(false);
                     }}
                   >
                     <Icon name="check" size={15} />
                     Save timing
                   </button>
                 </div>
-              </div>
-          </SettingsAccordion>
-          <SettingsAccordion
-            open={shortcutsOpen}
-            onOpenChange={setShortcutsOpen}
-            title="Keyboard shortcuts"
-            summary={`${KEYBOARD_SHORTCUTS.length} active shortcut${KEYBOARD_SHORTCUTS.length === 1 ? '' : 's'}`}
-          >
-            <div className="settings-shortcuts-list">
-              {KEYBOARD_SHORTCUTS.map((shortcut) => (
-                <div key={shortcut.id} className="settings-shortcut-row">
-                  <div>
-                    <strong>{shortcut.label}</strong>
-                    <span>{shortcut.description}</span>
-                    <small>{shortcut.scopeLabel}</small>
-                  </div>
-                  <div className="settings-shortcut-keys" aria-label={shortcut.displayKeys.join(' plus ')}>
-                    {shortcut.displayKeys.map((key) => <kbd key={key}>{key}</kbd>)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </SettingsAccordion>
-          <div className="settings-option-card">
+          </div>
+          <div className="settings-editor-card settings-option-card">
             <span className="settings-option-icon" aria-hidden="true">
               <Icon name="message" size={16} />
             </span>
@@ -419,8 +418,27 @@ export function SettingsPage() {
               }
             />
           </div>
-          <div className="settings-bottom-actions">
-            <div className="settings-footer-controls">
+        </section>
+        <section id="settings-shortcuts" className={sectionClassName('shortcuts')}>
+          {renderSectionHeader('shortcuts')}
+          <div className="settings-editor-card settings-shortcuts-list">
+              {KEYBOARD_SHORTCUTS.map((shortcut) => (
+                <div key={shortcut.id} className="settings-shortcut-row">
+                  <div>
+                    <strong>{shortcut.label}</strong>
+                    <span>{shortcut.description}</span>
+                    <small>{shortcut.scopeLabel}</small>
+                  </div>
+                  <div className="settings-shortcut-keys" aria-label={shortcut.displayKeys.join(' plus ')}>
+                    {shortcut.displayKeys.map((key) => <kbd key={key}>{key}</kbd>)}
+                  </div>
+                </div>
+              ))}
+            </div>
+        </section>
+        <section id="settings-appearance" className={sectionClassName('appearance')}>
+          {renderSectionHeader('appearance')}
+          <div className="settings-editor-card settings-footer-controls">
               <AppTooltip label={settings.theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}>
                 <button
                   type="button"
@@ -432,46 +450,99 @@ export function SettingsPage() {
                   <span>{settings.theme === 'dark' ? 'Light theme' : 'Dark theme'}</span>
                 </button>
               </AppTooltip>
-            </div>
-            <footer className="settings-footer">
-              <div className="settings-footer-main">
-                <span className="settings-author-credit">Built by <a href={X_PROFILE_URL} target="_blank" rel="noreferrer">Shashank Harikripa</a></span>
-                <nav className="settings-socials" aria-label="Project links">
-                  <TooltipIconAction label="Visit project" href={PROJECT_GITHUB_URL} target="_blank" rel="noreferrer">
-                    <Icon name="github" size={16} />
-                  </TooltipIconAction>
-                  <TooltipIconAction label="Open source attributions" onClick={() => setShowCredits(true)}>
-                    <Icon name="eye" size={16} />
-                  </TooltipIconAction>
-                </nav>
-              </div>
-              <div className="usage-logs-row">
-                <p className="usage-logs-disclosure">
-                  Sends anonymized usage logs.{' '}
-                  <button type="button" onClick={() => setShowUsageLogsInfo(true)}>
-                    Learn more
-                  </button>
-                </p>
-              </div>
-            </footer>
           </div>
         </section>
+        <section id="settings-privacy" className={sectionClassName('privacy')}>
+          {renderSectionHeader('privacy')}
+          <div className="settings-editor-card usage-logs-modal-body">
+              <p className="usage-logs-assurance">
+                We never send your tokens, creds, API keys, prompts, chat text, or diagram content.
+              </p>
+              <p className="usage-logs-copy">
+                Archimedes only sends privacy-aware product telemetry through PostHog, like app load, review start/completion, and connection test status. Keeping this on helps us understand what works and improve the app.
+              </p>
+              <div className="usage-logs-toggle-row">
+                <div>
+                  <div className="usage-logs-toggle-title">
+                    Send anonymous usage logs <span>Recommended</span>
+                  </div>
+                  <p>Leaving this enabled helps prioritize fixes without exposing private data.</p>
+                </div>
+                <AppSwitch
+                  checked={settings.sendAnonymizedUsageLogs}
+                  ariaLabel="Send anonymized usage logs"
+                  onCheckedChange={(checked) =>
+                    onSettingsChange({
+                      ...settings,
+                      sendAnonymizedUsageLogs: checked,
+                    })
+                  }
+                />
+              </div>
+              {!settings.sendAnonymizedUsageLogs && (
+                <p className="usage-logs-opt-out-note">Usage logs are off. You can turn them back on anytime to help improve Archimedes.</p>
+              )}
+            </div>
+        </section>
+        <section id="settings-about" className={sectionClassName('about')}>
+          {renderSectionHeader('about')}
+          <div className="settings-editor-card settings-about-card">
+            <span className="settings-author-credit">Built by <a href={PERSONAL_SITE_URL} target="_blank" rel="noreferrer">Shashank Harikripa</a></span>
+            <nav className="settings-socials" aria-label="Project links">
+              <TooltipIconAction label="Visit X profile" href={X_PROFILE_URL} target="_blank" rel="noreferrer">
+                <Icon name="xSocial" size={15} />
+              </TooltipIconAction>
+              <TooltipIconAction label="Visit LinkedIn profile" href={LINKEDIN_PROFILE_URL} target="_blank" rel="noreferrer">
+                <Icon name="linkedin" size={15} />
+              </TooltipIconAction>
+              <TooltipIconAction label="Visit project" href={PROJECT_GITHUB_URL} target="_blank" rel="noreferrer">
+                <Icon name="github" size={16} />
+              </TooltipIconAction>
+            </nav>
+          </div>
+          <div className="settings-editor-card credits-scroll">
+              <p className="credits-intro">Archimedes Agent is built with these open source libraries and tools.</p>
+              <div className="credits-list">
+                {OPEN_SOURCE_CREDITS.map((credit) => (
+                  <article className="credit-card" key={credit.packageName}>
+                    <div>
+                      <h3>{credit.name}</h3>
+                      <p>{credit.note}</p>
+                    </div>
+                    <dl>
+                      <div>
+                        <dt>Package</dt>
+                        <dd>{credit.packageName}</dd>
+                      </div>
+                      <div>
+                        <dt>License</dt>
+                        <dd>{credit.license}</dd>
+                      </div>
+                    </dl>
+                    <a href={credit.url} target="_blank" rel="noreferrer">Visit project</a>
+                  </article>
+                ))}
+              </div>
+            </div>
+        </section>
+      </div>
+    </section>
       <AppDialog
         open={showOllamaSetup}
         onOpenChange={setShowOllamaSetup}
         className="credits-modal ollama-setup-modal"
         labelledBy="ollama-setup-title"
       >
-            <header className="credits-modal-header">
-              <div>
-                <p className="credits-kicker">Local Ollama</p>
-                <AppDialogTitle id="ollama-setup-title">Set up a vision-supported model</AppDialogTitle>
-              </div>
-              <button type="button" className="credits-close-button" onClick={() => setShowOllamaSetup(false)} aria-label="Close Ollama setup">
-                <Icon name="x" size={15} />
-              </button>
-            </header>
-            <div className="credits-scroll ollama-setup-scroll">
+        <header className="credits-modal-header">
+          <div>
+            <p className="credits-kicker">Local models</p>
+            <AppDialogTitle id="ollama-setup-title">Set up a vision-supported Ollama model</AppDialogTitle>
+          </div>
+          <button type="button" className="credits-close-button" onClick={() => setShowOllamaSetup(false)} aria-label="Close Ollama setup">
+            <Icon name="x" size={15} />
+          </button>
+        </header>
+        <div className="credits-scroll ollama-setup-scroll">
               <div className="ollama-setup-content">
                 <p>
                   Archimedes needs an Ollama model with image/vision support so it can inspect your diagrams. Browse the live Ollama catalogue here:{' '}
@@ -577,90 +648,6 @@ export function SettingsPage() {
                   {renderCopyableCommand('ollama pull gemma4:e4b')}
                   <p>Copy and run it, then enter <code>gemma4:e4b</code> in the Model field. If you pick a different vision model from the catalogue, use its exact tag in both the pull command and the Model field.</p>
                 </div>
-              </div>
-            </div>
-      </AppDialog>
-      <AppDialog
-        open={showUsageLogsInfo}
-        onOpenChange={setShowUsageLogsInfo}
-        className="credits-modal usage-logs-modal"
-        labelledBy="usage-logs-title"
-      >
-            <header className="credits-modal-header">
-              <div>
-                <p className="credits-kicker">Privacy</p>
-                <AppDialogTitle id="usage-logs-title">Anonymous usage logs</AppDialogTitle>
-              </div>
-              <button type="button" className="credits-close-button" onClick={() => setShowUsageLogsInfo(false)} aria-label="Close usage logs information">
-                <Icon name="x" size={15} />
-              </button>
-            </header>
-            <div className="usage-logs-modal-body">
-              <p className="usage-logs-assurance">
-                We never send your tokens, creds, API keys, prompts, chat text, or diagram content.
-              </p>
-              <p className="usage-logs-copy">
-                Archimedes only sends privacy-aware product telemetry through PostHog, like app load, review start/completion, and connection test status. Keeping this on helps us understand what works and improve the app.
-              </p>
-              <div className="usage-logs-toggle-row">
-                <div>
-                  <div className="usage-logs-toggle-title">
-                    Send anonymous usage logs <span>Recommended</span>
-                  </div>
-                  <p>Leaving this enabled helps prioritize fixes without exposing private data.</p>
-                </div>
-                <AppSwitch
-                  checked={settings.sendAnonymizedUsageLogs}
-                  ariaLabel="Send anonymized usage logs"
-                  onCheckedChange={(checked) =>
-                    onSettingsChange({
-                      ...settings,
-                      sendAnonymizedUsageLogs: checked,
-                    })
-                  }
-                />
-              </div>
-              {!settings.sendAnonymizedUsageLogs && (
-                <p className="usage-logs-opt-out-note">Usage logs are off. You can turn them back on anytime to help improve Archimedes.</p>
-              )}
-            </div>
-      </AppDialog>
-      <AppDialog
-        open={showCredits}
-        onOpenChange={setShowCredits}
-        labelledBy="credits-title"
-      >
-            <header className="credits-modal-header">
-              <div>
-                <p className="credits-kicker">Open source</p>
-                <AppDialogTitle id="credits-title">Open source attributions</AppDialogTitle>
-              </div>
-              <button type="button" className="credits-close-button" onClick={() => setShowCredits(false)} aria-label="Close open source attributions">
-                <Icon name="x" size={15} />
-              </button>
-            </header>
-            <div className="credits-scroll">
-              <p className="credits-intro">Archimedes Agent is built with these open source libraries and tools.</p>
-              <div className="credits-list">
-                {OPEN_SOURCE_CREDITS.map((credit) => (
-                  <article className="credit-card" key={credit.packageName}>
-                    <div>
-                      <h3>{credit.name}</h3>
-                      <p>{credit.note}</p>
-                    </div>
-                    <dl>
-                      <div>
-                        <dt>Package</dt>
-                        <dd>{credit.packageName}</dd>
-                      </div>
-                      <div>
-                        <dt>License</dt>
-                        <dd>{credit.license}</dd>
-                      </div>
-                    </dl>
-                    <a href={credit.url} target="_blank" rel="noreferrer">Visit project</a>
-                  </article>
-                ))}
               </div>
             </div>
       </AppDialog>

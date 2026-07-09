@@ -2,7 +2,6 @@ import type { IconName } from '../components/ui/icons';
 
 export const ASSISTANT_PANE_VIEW_IDS = {
   chat: 'chat',
-  settings: 'settings',
 } as const;
 
 export type AssistantPaneView = (typeof ASSISTANT_PANE_VIEW_IDS)[keyof typeof ASSISTANT_PANE_VIEW_IDS];
@@ -24,14 +23,6 @@ export const ASSISTANT_PANE_VIEWS: readonly AssistantPaneViewDefinition[] = [
     toggleAriaLabel: 'Back to chat',
     toggleTooltipLabel: 'Back to chat',
     toggleIconName: 'message',
-  },
-  {
-    id: ASSISTANT_PANE_VIEW_IDS.settings,
-    label: 'Settings',
-    toggleLabel: 'Settings',
-    toggleAriaLabel: 'Open settings',
-    toggleTooltipLabel: 'Settings',
-    toggleIconName: 'settings',
   },
 ];
 

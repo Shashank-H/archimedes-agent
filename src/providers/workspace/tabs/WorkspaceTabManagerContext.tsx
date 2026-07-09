@@ -47,6 +47,7 @@ type WorkspaceTabManagerContextValue = {
   handleSnapshotChange: (tabId: WorkspaceFileId, snapshot: DiagramSnapshot) => boolean;
   openEntryAsTab: (entry: WorkspaceEntry) => Promise<void>;
   openUntitledTab: () => void;
+  openAppSettingsTab: () => void;
   switchTab: (tabId: WorkspaceFileId) => void;
   closeTab: (tabId: WorkspaceFileId) => Promise<void>;
   closeActiveTab: () => Promise<void>;
@@ -58,7 +59,29 @@ type WorkspaceTabManagerContextValue = {
   setWorkspaceSaveTarget: (target: WorkspaceSaveTarget) => void;
 };
 
+export const APP_SETTINGS_TAB_ID = 'app://settings' as WorkspaceFileId;
+
 const UNTITLED_ROOT_ID = 'untitled://local/root';
+
+function createAppSettingsTab(): WorkspaceTab {
+  return {
+    id: APP_SETTINGS_TAB_ID,
+    title: 'App Settings',
+    path: 'Archimedes / App Settings',
+    providerKind: 'app',
+    rootId: null,
+    isUntitled: false,
+    isSupported: false,
+    loadState: 'loaded',
+    saveState: 'idle',
+    error: null,
+    appPage: 'settings',
+  };
+}
+
+export function isAppSettingsTab(tab: WorkspaceTab | null | undefined) {
+  return tab?.appPage === 'settings';
+}
 
 function createUntitledTab(draft: ReturnType<typeof createLocalDraftRecord>): WorkspaceTab {
   return {
@@ -349,6 +372,18 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
     setActive(tab.id);
   }, [setActive]);
 
+  const openAppSettingsTab = useCallback(() => {
+    const existingTab = tabsRef.current.find(isAppSettingsTab);
+    if (existingTab) {
+      setActive(existingTab.id);
+      return;
+    }
+
+    const tab = createAppSettingsTab();
+    setTabs((currentTabs) => (currentTabs.some(isAppSettingsTab) ? currentTabs : [...currentTabs, tab]));
+    setActive(tab.id);
+  }, [setActive]);
+
   const switchTab = useCallback((tabId: WorkspaceFileId) => setActive(tabId), [setActive]);
 
   const closeTabs = useCallback((tabIds: Set<WorkspaceFileId>) => {
@@ -365,7 +400,7 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
 
     currentTabs.forEach((tab) => {
       if (!tabIds.has(tab.id)) return;
-      documentRecordByTabIdRef.current.delete(tab.id);
+      if (!tab.appPage) documentRecordByTabIdRef.current.delete(tab.id);
       if (tab.isUntitled) appStorage.deleteLocalDraft(tab.id);
     });
 
@@ -518,6 +553,8 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
         return;
       }
 
+      if (tab.providerKind === 'app') return;
+
       const provider = workspaceProviderFactory.getProvider(tab.providerKind);
       await provider.writeDocument({
         id: tab.id,
@@ -582,6 +619,7 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
     handleSnapshotChange,
     openEntryAsTab,
     openUntitledTab,
+    openAppSettingsTab,
     switchTab,
     closeTab,
     closeActiveTab,
@@ -601,6 +639,7 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
     handleSnapshotChange,
     openEntryAsTab,
     openUntitledTab,
+    openAppSettingsTab,
     switchTab,
     closeTab,
     closeActiveTab,

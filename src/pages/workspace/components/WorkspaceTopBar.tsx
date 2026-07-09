@@ -4,7 +4,7 @@ import type { AppSettings } from '../../../types';
 import type { WorkspaceRoot, WorkspaceTab } from '../../../lib/workspace/types';
 import { workspaceProviderFactory } from '../../../lib/workspace/factory';
 import { getWorkspacePlatformActions, getWorkspaceRuntime } from '../../../lib/workspace/platformActions';
-import { canSaveWorkspaceTab } from '../../../providers/workspace/tabs/WorkspaceTabManagerContext';
+import { canSaveWorkspaceTab, isAppSettingsTab } from '../../../providers/workspace/tabs/WorkspaceTabManagerContext';
 import { useWorkspaceWindowControls } from '../hooks/useWorkspaceWindowControls';
 
 type WorkspaceTopBarProps = {
@@ -29,6 +29,7 @@ function saveStateText(activeTab: WorkspaceTab | null) {
   if (!activeTab) return 'No document open';
   if (activeTab.loadState === 'loading') return `Loading ${activeTab.title}…`;
   if (activeTab.loadState === 'error') return `Could not load ${activeTab.title}`;
+  if (isAppSettingsTab(activeTab)) return 'Editing app settings';
   if (!activeTab.isSupported) return `Viewing unsupported file: ${activeTab.title}`;
   if (activeTab.saveState === 'dirty') return `Unsaved changes in ${activeTab.title}`;
   if (activeTab.saveState === 'saving') return `Saving ${activeTab.title}…`;
@@ -38,6 +39,7 @@ function saveStateText(activeTab: WorkspaceTab | null) {
 
 function activeBreadcrumb(root: WorkspaceRoot | null, activeTab: WorkspaceTab | null) {
   if (!activeTab) return root?.name ?? 'No workspace';
+  if (isAppSettingsTab(activeTab)) return 'Workspace › App Settings';
   const rootName = root?.name ?? (activeTab.isUntitled ? 'Untitled' : 'Workspace');
   const pathParts = activeTab.path.split(/[\\/]/).filter(Boolean);
   const compactPath = pathParts.length > 3 ? ['…', ...pathParts.slice(-3)] : pathParts;
@@ -159,8 +161,8 @@ export function WorkspaceTopBar({
           type="button"
           className="workspace-chrome-button"
           onClick={onOpenSettings}
-          aria-label="Open assistant settings"
-          title="Settings"
+          aria-label="Open app settings"
+          title="App Settings"
         >
           <Icon name="settings" size={14} />
         </button>

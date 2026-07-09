@@ -3,7 +3,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { AppTooltip } from '../../../components/AppTooltip';
 import { CustomHorizontalScrollbar } from '../../../components/ui/CustomHorizontalScrollbar';
 import { Icon } from '../../../components/ui/icons';
-import { canSaveWorkspaceTab } from '../../../providers/workspace/tabs/WorkspaceTabManagerContext';
+import { canSaveWorkspaceTab, isAppSettingsTab } from '../../../providers/workspace/tabs/WorkspaceTabManagerContext';
 import type { WorkspaceFileId, WorkspaceTab } from '../../../lib/workspace/types';
 
 type WorkspaceTabsProps = {
@@ -150,11 +150,12 @@ export function WorkspaceTabs({
       <CustomHorizontalScrollbar
         className="workspace-tabs-shell"
         viewportClassName="workspace-tabs"
-        viewportProps={{ role: 'tablist', 'aria-label': 'Open diagrams' }}
+        viewportProps={{ role: 'tablist', 'aria-label': 'Open workspace tabs' }}
       >
         {tabs.map((tab) => {
           const isActive = tab.id === activeTabId;
           const status = saveStateLabel(tab);
+          const isSettingsTab = isAppSettingsTab(tab);
           const showSaveButton = isActive && canSaveWorkspaceTab(tab);
 
           return (
@@ -172,6 +173,7 @@ export function WorkspaceTabs({
                   className="workspace-tab-button"
                   onClick={() => onSwitchTab(tab.id)}
                 >
+                  {isSettingsTab ? <Icon name="settings" size={13} /> : null}
                   <span className="workspace-tab-title">{tab.title}</span>
                   {status ? <span className={`workspace-tab-status is-${tab.saveState}`} aria-label={status} /> : null}
                 </button>

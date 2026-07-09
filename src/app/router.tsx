@@ -1,14 +1,12 @@
 import { useEffect, type ComponentType } from 'react';
 import { AssistantHeader } from '../components/ui/AssistantHeader';
 import { ChatPage } from '../pages/chat/ChatPage';
-import { SettingsPage } from '../pages/settings/SettingsPage';
 import { useChat } from '../providers/chat/ChatContext';
 import { ASSISTANT_PANE_VIEW_IDS, type AssistantPaneView } from './constants';
 import { useAssistantPaneNavigation } from './hooks/useAssistantPaneNavigation';
 
 const ASSISTANT_PANE_COMPONENT_BY_VIEW: Record<AssistantPaneView, ComponentType> = {
   [ASSISTANT_PANE_VIEW_IDS.chat]: ChatPage,
-  [ASSISTANT_PANE_VIEW_IDS.settings]: SettingsPage,
 };
 
 export function AssistantPaneRouter() {
@@ -17,14 +15,11 @@ export function AssistantPaneRouter() {
   const ActivePaneComponent = ASSISTANT_PANE_COMPONENT_BY_VIEW[activeView];
 
   useEffect(() => {
-    const openSettings = () => openView(ASSISTANT_PANE_VIEW_IDS.settings);
     const openChat = () => openView(ASSISTANT_PANE_VIEW_IDS.chat);
 
-    window.addEventListener('archimedes:open-settings', openSettings);
     window.addEventListener('archimedes:open-chat', openChat);
 
     return () => {
-      window.removeEventListener('archimedes:open-settings', openSettings);
       window.removeEventListener('archimedes:open-chat', openChat);
     };
   }, [openView]);

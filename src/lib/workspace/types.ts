@@ -2,7 +2,10 @@ import type { DiagramSnapshot } from '../../types';
 
 export type WorkspaceProviderKind = 'native' | 'browser' | 'untitled';
 export type WorkspaceEntryKind = 'file' | 'directory';
-export type WorkspaceFileId = `${WorkspaceProviderKind}://${string}`;
+export type WorkspaceAppPage = 'settings';
+export type WorkspaceAppProviderKind = 'app';
+export type WorkspaceResourceProviderKind = WorkspaceProviderKind | WorkspaceAppProviderKind;
+export type WorkspaceFileId = `${WorkspaceResourceProviderKind}://${string}`;
 export type WorkspaceRootId = WorkspaceFileId;
 export type WorkspaceSaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'error';
 export type WorkspaceLoadState = 'idle' | 'loading' | 'loaded' | 'error';
@@ -48,13 +51,14 @@ export type WorkspaceTab = {
   id: WorkspaceFileId;
   title: string;
   path: string;
-  providerKind: WorkspaceProviderKind;
+  providerKind: WorkspaceResourceProviderKind;
   rootId: WorkspaceRootId | null;
   isUntitled: boolean;
   isSupported: boolean;
   loadState: WorkspaceLoadState;
   saveState: WorkspaceSaveState;
   error: string | null;
+  appPage?: WorkspaceAppPage;
 };
 
 export type WorkspaceOpenRootResult = {

@@ -55,8 +55,8 @@ export function WorkspaceActivityRail({
           type="button"
           className="workspace-activity-button"
           onClick={onOpenSettings}
-          aria-label="Open Archimedes settings"
-          title="Settings"
+          aria-label="Open app settings"
+          title="App Settings"
         >
           <Icon name="settings" size={21} />
         </button>
