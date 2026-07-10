@@ -95,7 +95,12 @@ export class AppStorage {
       proactiveDelayMs: normalizeReviewDelayMs(settings.proactiveDelayMs ?? DEFAULT_SETTINGS.proactiveDelayMs),
       proactiveCooldownMs: normalizeReviewTimeoutMs(settings.proactiveCooldownMs ?? DEFAULT_SETTINGS.proactiveCooldownMs),
       providerConfigurationTestedKey: settings.providerConfigurationTestedKey ?? DEFAULT_SETTINGS.providerConfigurationTestedKey,
-      theme: settings.theme || browserTheme,
+      theme: (() => {
+        const t = settings.theme;
+        const valid = ['light', 'dark', 'coffee', 'sepia'];
+        if (t && valid.includes(t)) return t;
+        return browserTheme;
+      })(),
     };
   }
 

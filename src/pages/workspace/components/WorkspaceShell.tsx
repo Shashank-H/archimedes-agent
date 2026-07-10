@@ -19,7 +19,7 @@ function dispatchAssistantPaneEvent(eventName: 'archimedes:open-chat') {
 }
 
 export function WorkspaceShell({ children }: { children: ReactNode }) {
-  const { settings, root, setDiagramApi, openWorkspaceRoot, isOpeningRoot } = useWorkspace();
+  const { settings, root, setDiagramApi, openWorkspaceRoot, isOpeningRoot, effectiveBase } = useWorkspace();
   const {
     activeTab,
     activeTabId,
@@ -138,7 +138,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
                 key={activeDocumentKey ?? activeTab.id}
                 documentKey={activeDocumentKey ?? activeTab.id}
                 initialSnapshot={activeSnapshot}
-                theme={settings.theme}
+                theme={effectiveBase}
                 onSnapshotChange={(snapshot) => {
                   if (handleSnapshotChange(activeTab.id, snapshot)) {
                     handleWorkspaceSnapshotChanged();

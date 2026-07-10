@@ -88,3 +88,55 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   color: #fff;
 }
 .theme-dark button:hover:not(:disabled) { background: #171717; border-color: #3f3f3f; }
+
+
+/* Additional color themes (multiple themes support) */
+/* Coffee - warm, cozy dark theme */
+.theme-coffee {
+  --ink: #f4e9d8;
+  --on-primary: #2f2118;
+  --body: #d4b89a;
+  --mute: #a17a52;
+  --hairline: #553c2f;
+  --hairline-strong: #7a533f;
+  --canvas: #251c15;
+  --canvas-soft: #1f1812;
+  --canvas-soft-2: #2f2118;
+  --shadow-1: inset 0 0 0 1px rgba(180, 130, 80, 0.12);
+  --shadow-2: 0 1px 2px rgba(0,0,0,0.35), 0 2px 4px rgba(0,0,0,0.25), inset 0 0 0 1px rgba(180, 130, 80, 0.08);
+  --shadow-4: 0 3px 6px rgba(0,0,0,0.4), 0 10px 20px -6px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(180, 130, 80, 0.1);
+  color-scheme: dark;
+  background: #1f1812;
+  color: #f4e9d8;
+}
+.theme-coffee button {
+  background: #2f2118;
+  border-color: #553c2f;
+  color: #f4e9d8;
+}
+.theme-coffee button:hover:not(:disabled) { background: #3a2a20; border-color: #7a533f; }
+
+/* Sepia - warm light / paper-like */
+.theme-sepia {
+  --ink: #3f2e1f;
+  --on-primary: #f4e9d8;
+  --body: #5c4633;
+  --mute: #8c6f50;
+  --hairline: #d4b89a;
+  --hairline-strong: #b38b5e;
+  --canvas: #f8f1e3;
+  --canvas-soft: #f4e9d8;
+  --canvas-soft-2: #e8d9c2;
+  --shadow-1: inset 0 0 0 1px rgba(140, 100, 60, 0.1);
+  --shadow-2: 0 1px 1px rgba(80, 50, 20, 0.1), 0 2px 3px rgba(80, 50, 20, 0.08);
+  --shadow-4: 0 2px 4px rgba(80, 50, 20, 0.12), 0 8px 16px -2px rgba(80, 50, 20, 0.1);
+  color-scheme: light;
+  background: #f8f1e3;
+  color: #3f2e1f;
+}
+.theme-sepia button {
+  background: #f4e9d8;
+  border-color: #d4b89a;
+  color: #3f2e1f;
+}
+.theme-sepia button:hover:not(:disabled) { background: #e8d9c2; border-color: #b38b5e; }

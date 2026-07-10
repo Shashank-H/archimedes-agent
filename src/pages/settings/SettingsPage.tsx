@@ -438,18 +438,23 @@ export function SettingsPage() {
         </section>
         <section id="settings-appearance" className={sectionClassName('appearance')}>
           {renderSectionHeader('appearance')}
-          <div className="settings-editor-card settings-footer-controls">
-              <AppTooltip label={settings.theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}>
-                <button
-                  type="button"
-                  className="theme-footer-button"
-                  onClick={() => onSettingsChange({ ...settings, theme: settings.theme === 'dark' ? 'light' : 'dark' })}
-                  aria-label={settings.theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-                >
-                  <Icon name={settings.theme === 'dark' ? 'sun' : 'moon'} size={15} />
-                  <span>{settings.theme === 'dark' ? 'Light theme' : 'Dark theme'}</span>
-                </button>
-              </AppTooltip>
+          <div className="settings-editor-card">
+            <label className="settings-select-label">
+              Theme
+              <CustomSelect
+                ariaLabel="Theme"
+                value={settings.theme}
+                options={[
+                  { value: 'light', label: 'Light' },
+                  { value: 'dark', label: 'Dark' },
+                  { value: 'coffee', label: 'Coffee (warm dark)' },
+                  { value: 'sepia', label: 'Sepia (warm light)' },
+                ]}
+                onChange={(value) => onSettingsChange({ ...settings, theme: value as any })}
+                className="settings-theme-select"
+              />
+            </label>
+            <p className="settings-hint">Choose a color scheme. “System” preference is respected on first run / when no explicit theme is saved.</p>
           </div>
         </section>
         <section id="settings-privacy" className={sectionClassName('privacy')}>
