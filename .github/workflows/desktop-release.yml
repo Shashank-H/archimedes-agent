@@ -62,7 +62,9 @@ jobs:
       matrix:
         include:
           - platform: linux
-            runner: ubuntu-24.04
+            # Use an older glibc baseline than ubuntu-24.04 so Linux release artifacts
+            # stay runnable on a broader set of distros such as Ubuntu/Zorin-family systems.
+            runner: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
             architecture: x64
             bundles: deb,appimage,rpm
