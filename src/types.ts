@@ -48,12 +48,22 @@ export type AppSettings = {
   providerConfigurationTestedKey: string;
 };
 
+export type AssistantMode = 'chat' | 'review' | 'edit';
+
+export type ChatWorkflowStep = {
+  id: 'inspect' | 'brief' | 'plan' | 'apply' | 'verify' | 'respond';
+  label: string;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  detail?: string;
+};
+
 export type ChatMessage = {
   id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
   createdAt: number;
-  kind?: 'chat' | 'manual-review' | 'proactive-review' | 'status' | 'error';
+  kind?: 'chat' | 'diagramming' | 'manual-review' | 'proactive-review' | 'status' | 'error';
+  workflowSteps?: ChatWorkflowStep[];
 };
 
 export type DiagramSnapshot = {

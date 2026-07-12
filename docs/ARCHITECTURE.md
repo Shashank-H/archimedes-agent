@@ -4,6 +4,8 @@
 
 Archimedes Agent is currently a client-heavy Tauri/Vite application. The Rust/Tauri layer provides the desktop shell, while the React frontend owns the diagram editor, assistant UI, local persistence, and Ollama communication.
 
+The assistant has three explicit modes: Chat is conversational and read-only, Review provides manual or proactive critique, and Edit / Build executes a canvas-mutating LangGraph workflow. The edit graph lives in `src/lib/diagram-agent/workflow.ts`; it inspects the active workspace snapshot, prepares a brief, asks the selected provider for a validated operation plan, applies operations incrementally, rereads the canvas for verification, and reports the result. Provider access remains behind `LlmProviderFactory`, while workspace mutations remain behind `WorkspaceTabManagerContext`.
+
 ```txt
 +-------------------------------------------------------------+
 | Tauri desktop shell / Vite browser dev server               |

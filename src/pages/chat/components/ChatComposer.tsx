@@ -2,7 +2,7 @@ import { AppTooltip } from '../../../components/AppTooltip';
 import { CustomSelect } from '../../../components/CustomSelect';
 import { Icon } from '../../../components/ui/icons';
 import type { AppSettings, ChatMessage, ThinkingLevel } from '../../../types';
-import { THINKING_OPTIONS } from '../constants';
+import { THINKING_OPTIONS, type ChatSectionTab } from '../constants';
 import { useChatComposer } from './hooks/useChatComposer';
 
 type ChatComposerProps = {
@@ -12,11 +12,14 @@ type ChatComposerProps = {
   onSettingsChange: (settings: AppSettings) => void;
   onSendChat: (prompt: string) => void;
   onReview: (prompt?: string) => void;
+  onCancel: () => void;
   onClearChat: () => void;
+  mode: ChatSectionTab;
 };
 
-export function ChatComposer({ settings, messages, isBusy, onSettingsChange, onSendChat, onReview, onClearChat }: ChatComposerProps) {
+export function ChatComposer({ settings, messages, isBusy, onSettingsChange, onSendChat, onReview, onCancel, onClearChat, mode }: ChatComposerProps) {
   const { prompt, setPrompt, textareaRef, submit } = useChatComposer({ isBusy, onSendChat });
+  const isEditMode = mode === 'edit';
 
   return (
     <footer className="composer">
@@ -34,7 +37,7 @@ export function ChatComposer({ settings, messages, isBusy, onSettingsChange, onS
             />
           </div>
         </AppTooltip>
-        <AppTooltip label="Clear chat">
+        <AppTooltip label="Clear all assistant messages">
           <button
             type="button"
             className="composer-clear-button clear-button"
@@ -51,8 +54,9 @@ export function ChatComposer({ settings, messages, isBusy, onSettingsChange, onS
         <textarea
           ref={textareaRef}
           rows={1}
-          placeholder="Ask about the diagram, tradeoffs, scaling, security..."
+          placeholder={isEditMode ? 'Describe what to build or change on the active diagram...' : mode === 'chat' ? 'Ask about the diagram, tradeoffs, scaling, security...' : 'Add review focus, or leave empty for a full review...'}
           value={prompt}
+          disabled={isBusy}
           onChange={(event) => setPrompt(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) submit();
@@ -61,28 +65,30 @@ export function ChatComposer({ settings, messages, isBusy, onSettingsChange, onS
       </div>
 
       <div className="composer-action-row">
-        <AppTooltip label={settings.autoReview ? 'Currently proactive. Click for manual.' : 'Currently manual. Click for proactive.'}>
-          <button
-            type="button"
-            onClick={() => onSettingsChange({ ...settings, autoReview: !settings.autoReview })}
-            className={`input-corner-toggle ${settings.autoReview ? 'proactive-button' : 'manual-button'}`}
-            aria-label={settings.autoReview ? 'Switch to manual review' : 'Switch to proactive review'}
-            disabled={isBusy}
-          >
-            <Icon name={settings.autoReview ? 'zap' : 'user'} size={14} />
-            <span>{settings.autoReview ? 'Proactive' : 'Manual'}</span>
-          </button>
-        </AppTooltip>
+        {mode === 'review' && (
+          <AppTooltip label={settings.autoReview ? 'Currently proactive. Click for manual.' : 'Currently manual. Click for proactive.'}>
+            <button
+              type="button"
+              onClick={() => onSettingsChange({ ...settings, autoReview: !settings.autoReview })}
+              className={`input-corner-toggle ${settings.autoReview ? 'proactive-button' : 'manual-button'}`}
+              aria-label={settings.autoReview ? 'Switch to manual review' : 'Switch to proactive review'}
+              disabled={isBusy}
+            >
+              <Icon name={settings.autoReview ? 'zap' : 'user'} size={14} />
+              <span>{settings.autoReview ? 'Proactive' : 'Manual'}</span>
+            </button>
+          </AppTooltip>
+        )}
         <button
-          className={`send-button unified-action-button input-action-button ${prompt.trim() ? 'send-mode' : 'review-mode'}`}
-          onClick={() => (prompt.trim() ? submit() : onReview())}
-          disabled={isBusy}
-          aria-label={prompt.trim() ? 'Send message' : 'Review diagram'}
+          className={`send-button unified-action-button input-action-button ${isBusy ? 'cancel-mode' : prompt.trim() ? 'send-mode' : 'review-mode'}`}
+          onClick={() => isBusy ? onCancel() : mode === 'review' && !prompt.trim() ? onReview() : submit()}
+          disabled={!isBusy && (isEditMode || mode === 'chat') && !prompt.trim()}
+          aria-label={isBusy ? 'Cancel request' : isEditMode ? 'Run agentic diagram edit' : mode === 'review' ? 'Review diagram' : 'Send message'}
         >
           <span className="action-icon-segment">
-            <Icon name={prompt.trim() ? 'send' : 'sparkles'} size={15} />
+            <Icon name={isBusy ? 'x' : isEditMode ? 'sparkles' : prompt.trim() ? 'send' : 'sparkles'} size={15} />
           </span>
-          <span>{isBusy ? 'Thinking' : prompt.trim() ? 'Send' : 'Review'}</span>
+          <span>{isBusy ? 'Cancel' : isEditMode ? 'Build' : mode === 'review' && !prompt.trim() ? 'Review' : 'Send'}</span>
         </button>
       </div>
     </footer>

@@ -21,6 +21,10 @@ A local-first diagramming and brainstorming app:
 - Manual review implemented.
 - Chat implemented.
 - Proactive review implemented.
+- Explicit Chat, Review, and Edit / Build assistant modes implemented.
+- LangGraph agentic diagram editing implemented with inspect, brief, plan, incremental apply, verify, and response stages.
+- Agent workflow progress and cancellation implemented in the assistant UI.
+- Automated Vitest coverage exists for workflow routing, retry, cancellation, and plan validation.
 - Diagram image export implemented.
 - Ollama streaming implemented.
 - Settings implemented.
@@ -34,7 +38,7 @@ A local-first diagramming and brainstorming app:
 - Windows installer/exe has not been produced locally.
 - Native desktop bundle has not been produced in this environment.
 - Production hardening is not done.
-- No automated tests yet.
+
 - No file/project manager yet.
 - No polished visual design yet.
 
