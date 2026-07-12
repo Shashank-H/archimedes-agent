@@ -1,5 +1,8 @@
 import { type Dispatch, type RefObject, type SetStateAction, useCallback, useEffect, useRef, useState } from 'react';
 import { captureAnalyticsEvent } from '../../../lib/analytics';
+import { describeDiagramPlan, parseDiagramPlan } from '../../../lib/diagram-agent/proposal';
+import { diagramAgentLogger } from '../../../lib/diagram-agent/logging';
+import type { DiagramPlanProposal } from '../../../lib/diagram-agent/types';
 import { meaningfulSceneSignature } from '../../../lib/diagramSummary';
 import { llmProviderFactory } from '../../../lib/llm/provider';
 import { normalizeReviewDelayMs, normalizeReviewTimeoutMs } from '../../../lib/reviewTiming';
@@ -26,9 +29,11 @@ type UseAgentReviewOptions = {
   setMessages: Dispatch<SetStateAction<ChatMessage[]>>;
   snapshotRef: RefObject<DiagramSnapshot | null>;
   getCurrentSnapshot: () => DiagramSnapshot | null;
+  onApplyDiagramPlan: (plan: DiagramPlanProposal) => Promise<void>;
+  canApplyDiagramPlan: () => boolean;
 };
 
-export function useAgentReview({ settings, messages, setSettings, setMessages, snapshotRef, getCurrentSnapshot }: UseAgentReviewOptions) {
+export function useAgentReview({ settings, messages, setSettings, setMessages, snapshotRef, getCurrentSnapshot, onApplyDiagramPlan, canApplyDiagramPlan }: UseAgentReviewOptions) {
   const [isBusy, setIsBusy] = useState(false);
   const [status, setStatus] = useState(() => llmProviderFactory.getProviderStatus(settings));
   const [modelValidationError, setModelValidationError] = useState<ModelValidationError>(null);
@@ -53,6 +58,10 @@ export function useAgentReview({ settings, messages, setSettings, setMessages, s
     updateMessages((current) => [...current, message]);
   }, [updateMessages]);
 
+  const replaceMessageContent = useCallback((messageId: string, content: string) => {
+    updateMessages((current) => current.map((message) => (message.id === messageId ? { ...message, content } : message)));
+  }, [updateMessages]);
+
   const appendToken = useCallback((messageId: string, token: string) => {
     updateMessages((current) =>
       current.map((message) =>
@@ -64,13 +73,22 @@ export function useAgentReview({ settings, messages, setSettings, setMessages, s
   const runAgentReview = useCallback(async ({ mode, prompt }: { mode: ReviewMode; prompt?: string }) => {
     if (isBusyRef.current) return;
     const current = snapshotRef.current;
-    if (!current) {
-      appendMessage({ id: id('err'), role: 'assistant', content: CHAT_COPY.drawFirst, createdAt: Date.now(), kind: ChatMessageKind.Status });
+    if (mode === ReviewMode.Diagramming && !canApplyDiagramPlan()) {
+      const content = CHAT_COPY.selectFileFirst;
+      appendMessage({ id: id('err'), role: 'assistant', content, createdAt: Date.now(), kind: ChatMessageKind.Diagramming });
+      diagramAgentLogger.failure('diagram file inspection', new Error(content));
+      return;
+    }
+    if (!current && mode !== ReviewMode.Chat) {
+      const content = mode === ReviewMode.Diagramming ? CHAT_COPY.selectFileFirst : CHAT_COPY.drawFirst;
+      appendMessage({ id: id('err'), role: 'assistant', content, createdAt: Date.now(), kind: ChatMessageKind.Status });
+      diagramAgentLogger.failure('diagram file inspection', new Error(content));
       return;
     }
 
-    const liveElements = current.elements.filter((element) => !element.isDeleted);
-    const currentSignature = meaningfulSceneSignature(current);
+    const inspectedSnapshot = current ?? { elements: [], appState: {}, files: {}, updatedAt: Date.now() };
+    const liveElements = inspectedSnapshot.elements.filter((element) => !element.isDeleted);
+    const currentSignature = meaningfulSceneSignature(inspectedSnapshot);
     const designChangedSincePreviousReview = mode === ReviewMode.Proactive && Boolean(lastReviewSignatureRef.current) && currentSignature !== lastReviewSignatureRef.current;
     if (mode === ReviewMode.Proactive && liveElements.length < MIN_ELEMENTS_FOR_PROACTIVE_REVIEW) return;
 
@@ -81,7 +99,7 @@ export function useAgentReview({ settings, messages, setSettings, setMessages, s
         role: 'assistant',
         content: `Cannot use model \`${settings.model}\` yet. Save failed with: ${validationError}`,
         createdAt: Date.now(),
-        kind: ChatMessageKind.Error,
+        kind: mode === ReviewMode.Diagramming ? ChatMessageKind.Diagramming : ChatMessageKind.Error,
       });
       setStatus(CHAT_COPY.modelSaveErrorStatus);
       return;
@@ -92,6 +110,7 @@ export function useAgentReview({ settings, messages, setSettings, setMessages, s
       live_element_count: liveElements.length,
       auto_review_enabled: settings.autoReview,
     });
+    diagramAgentLogger.inspectStarted({ tabId: null, elementCount: liveElements.length, mode });
 
     setIsBusy(true);
     setStatus(mode === ReviewMode.Proactive ? CHAT_COPY.proactiveStatus : CHAT_COPY.manualStatus);
@@ -100,25 +119,38 @@ export function useAgentReview({ settings, messages, setSettings, setMessages, s
 
     const assistantId = id('assistant');
     if (prompt?.trim()) {
-      appendMessage({ id: id('user'), role: 'user', content: prompt.trim(), createdAt: Date.now(), kind: mode === ReviewMode.Manual ? ChatMessageKind.ManualReview : ChatMessageKind.Chat });
+      appendMessage({ id: id('user'), role: 'user', content: prompt.trim(), createdAt: Date.now(), kind: mode === ReviewMode.Manual ? ChatMessageKind.ManualReview : mode === ReviewMode.Diagramming ? ChatMessageKind.Diagramming : ChatMessageKind.Chat });
     }
     appendMessage({
       id: assistantId,
       role: 'assistant',
       content: '',
       createdAt: Date.now(),
-      kind: mode === ReviewMode.Proactive ? ChatMessageKind.ProactiveReview : mode === ReviewMode.Manual ? ChatMessageKind.ManualReview : ChatMessageKind.Chat,
+      kind: mode === ReviewMode.Proactive ? ChatMessageKind.ProactiveReview : mode === ReviewMode.Manual ? ChatMessageKind.ManualReview : mode === ReviewMode.Diagramming ? ChatMessageKind.Diagramming : ChatMessageKind.Chat,
     });
 
     try {
+      let responseContent = '';
       const llmMessages = await buildLlmReviewMessages({ mode, userPrompt: prompt, designChangedSincePreviousReview });
       await llmProviderFactory.streamChat({
         settings,
         messages: llmMessages,
         signal: controller.signal,
-        onToken: (token) => appendToken(assistantId, token),
+        onToken: (token) => {
+          responseContent += token;
+          appendToken(assistantId, token);
+        },
         onSettingsChange: setSettings,
       });
+      const diagramPlan = mode === ReviewMode.Diagramming ? parseDiagramPlan(responseContent) : null;
+      diagramAgentLogger.requestCompleted({ responseLength: responseContent.length, planDetected: Boolean(diagramPlan) });
+      if (mode === ReviewMode.Diagramming) {
+        if (!diagramPlan) throw new Error('The model did not return an executable diagram plan. No changes were made.');
+        const openedTabPlan = { ...diagramPlan, target: { type: 'current' } as const };
+        setStatus('Applying diagram changes...');
+        await onApplyDiagramPlan(openedTabPlan);
+        replaceMessageContent(assistantId, describeDiagramPlan(openedTabPlan));
+      }
       lastReviewSignatureRef.current = currentSignature;
       if (mode === ReviewMode.Proactive && current) {
         lastSentSignatureRef.current = currentSignature;
@@ -127,6 +159,7 @@ export function useAgentReview({ settings, messages, setSettings, setMessages, s
       captureAnalyticsEvent('diagram_review_completed', { mode });
       setStatus(llmProviderFactory.getProviderStatus(settings));
     } catch (error) {
+      diagramAgentLogger.failure('agent request or diagram application', error);
       const message = toErrorMessage(error);
       appendToken(
         assistantId,
@@ -138,7 +171,7 @@ export function useAgentReview({ settings, messages, setSettings, setMessages, s
       setIsBusy(false);
       inFlightAbortRef.current = null;
     }
-  }, [appendMessage, appendToken, buildLlmReviewMessages, modelValidationError, settings, snapshotRef]);
+  }, [appendMessage, appendToken, buildLlmReviewMessages, canApplyDiagramPlan, modelValidationError, onApplyDiagramPlan, replaceMessageContent, settings, snapshotRef]);
 
   const scheduleProactiveReview = useCallback(() => {
     window.clearTimeout(proactiveTimerRef.current);
@@ -174,6 +207,10 @@ export function useAgentReview({ settings, messages, setSettings, setMessages, s
 
   const handleSendChat = useCallback((prompt: string) => {
     void runAgentReview({ mode: ReviewMode.Chat, prompt });
+  }, [runAgentReview]);
+
+  const handleDiagrammingRequest = useCallback((prompt: string) => {
+    void runAgentReview({ mode: ReviewMode.Diagramming, prompt });
   }, [runAgentReview]);
 
   const handleReview = useCallback((prompt?: string) => {
@@ -244,6 +281,7 @@ export function useAgentReview({ settings, messages, setSettings, setMessages, s
     setModelValidationError,
     scheduleProactiveReview,
     handleSendChat,
+    handleDiagrammingRequest,
     handleReview,
     handleTestConnection,
   };

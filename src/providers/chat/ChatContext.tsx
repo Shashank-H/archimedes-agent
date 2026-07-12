@@ -10,6 +10,7 @@ export type ChatContextValue = {
   modelValidationError: ModelValidationError;
   currentModelValidationError: string | null;
   handleSendChat: (prompt: string) => void;
+  handleDiagrammingRequest: (prompt: string) => void;
   handleReview: (prompt?: string) => void;
   handleClearChat: () => void;
   handleTestConnection: () => boolean | Promise<boolean>;

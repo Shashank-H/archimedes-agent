@@ -4,7 +4,7 @@ import { formatDiagramSummary } from '../lib/diagramSummary';
 import { ARCHITECTURE_REVIEWER_SYSTEM_PROMPT, buildReviewPrompt } from '../lib/llm/prompts';
 import type { AppSettings, ChatMessage, DiagramSnapshot, LlmChatMessage } from '../types';
 
-export type ReviewMode = 'manual' | 'proactive' | 'chat';
+export type ReviewMode = 'manual' | 'proactive' | 'chat' | 'diagramming';
 
 const MAX_HISTORY_MESSAGES = 12;
 export const DESIGN_CHANGED_CONTEXT_MESSAGE =
@@ -13,6 +13,22 @@ export const DESIGN_CHANGED_CONTEXT_MESSAGE =
 function shouldIncludeHistory(mode: ReviewMode, settings: AppSettings) {
   if (mode === 'proactive') return settings.includeHistoryInProactiveReviews;
   return true;
+}
+
+function formatSceneForAgent(snapshot: DiagramSnapshot) {
+  return JSON.stringify({
+    elements: snapshot.elements.filter((element) => !element.isDeleted).map((element) => ({
+      id: element.id,
+      type: element.type,
+      x: element.x,
+      y: element.y,
+      width: element.width,
+      height: element.height,
+      text: 'text' in element ? element.text : undefined,
+      groupIds: element.groupIds,
+    })),
+    appState: snapshot.appState,
+  });
 }
 
 function isConversationalMessage(message: ChatMessage) {
@@ -46,11 +62,12 @@ export async function buildReviewMessages({
   userPrompt,
   designChangedSincePreviousReview = false,
 }: BuildReviewMessagesArgs): Promise<LlmChatMessage[]> {
-  if (!snapshot) throw new Error('No diagram is available yet. Draw something first.');
+  const inspectedSnapshot = snapshot ?? { elements: [], appState: {}, files: {}, updatedAt: Date.now() };
+  if (!snapshot && mode !== 'chat') throw new Error('No diagram is available yet. Open an Excalidraw file first.');
 
-  const diagram = await exportDiagramImage(snapshot);
+  const diagram = await exportDiagramImage(inspectedSnapshot);
   const metadata = formatDiagramSummary(diagram.summary);
-  const prompt = buildReviewPrompt({ userPrompt, metadata, mode, thinkingLevel: settings.thinkingLevel });
+  const prompt = buildReviewPrompt({ userPrompt, metadata, mode, thinkingLevel: settings.thinkingLevel, scene: formatSceneForAgent(inspectedSnapshot) });
   const history = shouldIncludeHistory(mode, settings) ? chatHistoryToLlmMessages(messages) : [];
   const designChangedContext: LlmChatMessage[] = designChangedSincePreviousReview
     ? [{ role: 'user', content: DESIGN_CHANGED_CONTEXT_MESSAGE }]

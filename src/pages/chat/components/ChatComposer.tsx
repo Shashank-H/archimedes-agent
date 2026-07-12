@@ -2,7 +2,7 @@ import { AppTooltip } from '../../../components/AppTooltip';
 import { CustomSelect } from '../../../components/CustomSelect';
 import { Icon } from '../../../components/ui/icons';
 import type { AppSettings, ChatMessage, ThinkingLevel } from '../../../types';
-import { THINKING_OPTIONS } from '../constants';
+import { THINKING_OPTIONS, type ChatSectionTab } from '../constants';
 import { useChatComposer } from './hooks/useChatComposer';
 
 type ChatComposerProps = {
@@ -13,9 +13,10 @@ type ChatComposerProps = {
   onSendChat: (prompt: string) => void;
   onReview: (prompt?: string) => void;
   onClearChat: () => void;
+  mode: ChatSectionTab;
 };
 
-export function ChatComposer({ settings, messages, isBusy, onSettingsChange, onSendChat, onReview, onClearChat }: ChatComposerProps) {
+export function ChatComposer({ settings, messages, isBusy, onSettingsChange, onSendChat, onReview, onClearChat, mode }: ChatComposerProps) {
   const { prompt, setPrompt, textareaRef, submit } = useChatComposer({ isBusy, onSendChat });
 
   return (
@@ -51,7 +52,7 @@ export function ChatComposer({ settings, messages, isBusy, onSettingsChange, onS
         <textarea
           ref={textareaRef}
           rows={1}
-          placeholder="Ask about the diagram, tradeoffs, scaling, security..."
+          placeholder={mode === 'diagramming' ? 'Describe what to draw or change on the opened diagram...' : 'Ask about the diagram, tradeoffs, scaling, security...'}
           value={prompt}
           onChange={(event) => setPrompt(event.target.value)}
           onKeyDown={(event) => {
@@ -61,28 +62,30 @@ export function ChatComposer({ settings, messages, isBusy, onSettingsChange, onS
       </div>
 
       <div className="composer-action-row">
-        <AppTooltip label={settings.autoReview ? 'Currently proactive. Click for manual.' : 'Currently manual. Click for proactive.'}>
-          <button
-            type="button"
-            onClick={() => onSettingsChange({ ...settings, autoReview: !settings.autoReview })}
-            className={`input-corner-toggle ${settings.autoReview ? 'proactive-button' : 'manual-button'}`}
-            aria-label={settings.autoReview ? 'Switch to manual review' : 'Switch to proactive review'}
-            disabled={isBusy}
-          >
-            <Icon name={settings.autoReview ? 'zap' : 'user'} size={14} />
-            <span>{settings.autoReview ? 'Proactive' : 'Manual'}</span>
-          </button>
-        </AppTooltip>
+        {mode === 'review' && (
+          <AppTooltip label={settings.autoReview ? 'Currently proactive. Click for manual.' : 'Currently manual. Click for proactive.'}>
+            <button
+              type="button"
+              onClick={() => onSettingsChange({ ...settings, autoReview: !settings.autoReview })}
+              className={`input-corner-toggle ${settings.autoReview ? 'proactive-button' : 'manual-button'}`}
+              aria-label={settings.autoReview ? 'Switch to manual review' : 'Switch to proactive review'}
+              disabled={isBusy}
+            >
+              <Icon name={settings.autoReview ? 'zap' : 'user'} size={14} />
+              <span>{settings.autoReview ? 'Proactive' : 'Manual'}</span>
+            </button>
+          </AppTooltip>
+        )}
         <button
           className={`send-button unified-action-button input-action-button ${prompt.trim() ? 'send-mode' : 'review-mode'}`}
           onClick={() => (prompt.trim() ? submit() : onReview())}
-          disabled={isBusy}
-          aria-label={prompt.trim() ? 'Send message' : 'Review diagram'}
+          disabled={isBusy || (mode === 'diagramming' && !prompt.trim())}
+          aria-label={mode === 'diagramming' ? 'Apply diagramming request' : prompt.trim() ? 'Send message' : 'Review diagram'}
         >
           <span className="action-icon-segment">
-            <Icon name={prompt.trim() ? 'send' : 'sparkles'} size={15} />
+            <Icon name={mode === 'diagramming' ? 'sparkles' : prompt.trim() ? 'send' : 'sparkles'} size={15} />
           </span>
-          <span>{isBusy ? 'Thinking' : prompt.trim() ? 'Send' : 'Review'}</span>
+          <span>{isBusy ? 'Thinking' : mode === 'diagramming' ? 'Draw' : prompt.trim() ? 'Send' : 'Review'}</span>
         </button>
       </div>
     </footer>

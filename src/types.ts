@@ -53,7 +53,7 @@ export type ChatMessage = {
   role: 'user' | 'assistant' | 'system';
   content: string;
   createdAt: number;
-  kind?: 'chat' | 'manual-review' | 'proactive-review' | 'status' | 'error';
+  kind?: 'chat' | 'diagramming' | 'manual-review' | 'proactive-review' | 'status' | 'error';
 };
 
 export type DiagramSnapshot = {

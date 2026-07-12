@@ -3,14 +3,19 @@ import chatPageStyles from '../ChatPage.module.css';
 import type { ChatMessage } from '../../../types';
 import { Icon } from '../../../components/ui/icons';
 
-export function MessageList({ messages }: { messages: ChatMessage[] }) {
+type MessageListProps = {
+  messages: ChatMessage[];
+  emptyState: { kicker: string; title: string; description: string };
+};
+
+export function MessageList({ messages, emptyState }: MessageListProps) {
   return (
     <div className={`message-list ${chatPageStyles.moduleAnchor}`}>
       {messages.length === 0 ? (
         <div className="empty-state">
-          <span className="empty-state-kicker"><Icon name="sparkles" size={14} /> No review yet</span>
-          <strong>Draw a system design, then ask Archimedes for a review.</strong>
-          <p>Switch to proactive mode for automatic diagram reviews, or keep manual mode and trigger review from the composer.</p>
+          <span className="empty-state-kicker"><Icon name="sparkles" size={14} /> {emptyState.kicker}</span>
+          <strong>{emptyState.title}</strong>
+          <p>{emptyState.description}</p>
         </div>
       ) : (
         messages.map((message) => (

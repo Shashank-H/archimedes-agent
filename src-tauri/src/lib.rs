@@ -32,6 +32,8 @@ pub fn run() {
         .setup(|app| {
             if let Some(window) = app.get_webview_window("main") {
                 workspace::apply_workspace_window_chrome(&window);
+                eprintln!("[archimedes] opening the web inspector for diagram-agent diagnostics");
+                window.open_devtools();
             }
 
             let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));

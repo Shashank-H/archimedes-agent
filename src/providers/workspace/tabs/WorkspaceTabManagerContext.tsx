@@ -45,6 +45,7 @@ type WorkspaceTabManagerContextValue = {
   snapshotRef: RefObject<DiagramSnapshot | null>;
   getCurrentSnapshot: () => DiagramSnapshot | null;
   handleSnapshotChange: (tabId: WorkspaceFileId, snapshot: DiagramSnapshot) => boolean;
+  replaceActiveSnapshot: (snapshot: DiagramSnapshot) => boolean;
   openEntryAsTab: (entry: WorkspaceEntry) => Promise<void>;
   openUntitledTab: () => void;
   openAppSettingsTab: () => void;
@@ -306,6 +307,25 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
     setTabSaveState(tabId, resolveSnapshotSaveState(snapshot, nextRecord.savedFingerprint));
 
     return activeTabIdRef.current === tabId;
+  }, [setTabSaveState]);
+
+  const replaceActiveSnapshot = useCallback((snapshot: DiagramSnapshot) => {
+    const tabId = activeTabIdRef.current;
+    const tab = tabsRef.current.find((candidate) => candidate.id === tabId);
+    if (!tabId || !tab || !tab.isSupported || tab.loadState !== 'loaded') return false;
+
+    const currentRecord = documentRecordByTabIdRef.current.get(tabId) ?? createDocumentRecord(null);
+    const nextRecord = {
+      ...currentRecord,
+      snapshot,
+      renderVersion: currentRecord.renderVersion + 1,
+      hasReceivedCanvasChange: false,
+    };
+    documentRecordByTabIdRef.current.set(tabId, nextRecord);
+    snapshotRef.current = snapshot;
+    setDocumentVersionBump((current) => current + 1);
+    setTabSaveState(tabId, resolveSnapshotSaveState(snapshot, nextRecord.savedFingerprint));
+    return true;
   }, [setTabSaveState]);
 
   const openEntryAsTab = useCallback(async (entry: WorkspaceEntry) => {
@@ -617,6 +637,7 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
     snapshotRef,
     getCurrentSnapshot,
     handleSnapshotChange,
+    replaceActiveSnapshot,
     openEntryAsTab,
     openUntitledTab,
     openAppSettingsTab,
@@ -637,6 +658,7 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
     activeDocumentKey,
     getCurrentSnapshot,
     handleSnapshotChange,
+    replaceActiveSnapshot,
     openEntryAsTab,
     openUntitledTab,
     openAppSettingsTab,
