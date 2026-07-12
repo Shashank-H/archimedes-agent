@@ -22,7 +22,7 @@ A local-first diagramming and brainstorming app:
 - Chat implemented.
 - Proactive review implemented.
 - Explicit Chat, Review, and Edit / Build assistant modes implemented.
-- LangGraph agentic diagram editing implemented with inspect, brief, plan, incremental apply, verify, and response stages.
+- LangGraph agentic diagram editing implemented with inspect, brief, plan, validation, atomic commit, verify, and response stages.
 - Agent workflow progress and cancellation implemented in the assistant UI.
 - Automated Vitest coverage exists for workflow routing, retry, cancellation, and plan validation.
 - Diagram image export implemented.

@@ -44,7 +44,10 @@ type WorkspaceTabManagerContextValue = {
   activeDocumentKey: string | null;
   snapshotRef: RefObject<DiagramSnapshot | null>;
   getCurrentSnapshot: () => DiagramSnapshot | null;
+  getSnapshotForTab: (tabId: WorkspaceFileId) => DiagramSnapshot | null;
+  isTabActive: (tabId: WorkspaceFileId) => boolean;
   handleSnapshotChange: (tabId: WorkspaceFileId, snapshot: DiagramSnapshot) => boolean;
+  replaceSnapshotForTab: (tabId: WorkspaceFileId, snapshot: DiagramSnapshot) => boolean;
   replaceActiveSnapshot: (snapshot: DiagramSnapshot) => boolean;
   openEntryAsTab: (entry: WorkspaceEntry) => Promise<void>;
   openUntitledTab: () => void;
@@ -55,7 +58,7 @@ type WorkspaceTabManagerContextValue = {
   closeSavedTabs: () => void;
   closeAllTabs: () => Promise<void>;
   clearActiveCanvasContents: () => Promise<void>;
-  saveTab: (tabId: WorkspaceFileId) => Promise<void>;
+  saveTab: (tabId: WorkspaceFileId, options?: { throwOnError?: boolean }) => Promise<void>;
   saveActiveTab: () => Promise<void>;
   setWorkspaceSaveTarget: (target: WorkspaceSaveTarget) => void;
 };
@@ -309,10 +312,9 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
     return activeTabIdRef.current === tabId;
   }, [setTabSaveState]);
 
-  const replaceActiveSnapshot = useCallback((snapshot: DiagramSnapshot) => {
-    const tabId = activeTabIdRef.current;
+  const replaceSnapshotForTab = useCallback((tabId: WorkspaceFileId, snapshot: DiagramSnapshot) => {
     const tab = tabsRef.current.find((candidate) => candidate.id === tabId);
-    if (!tabId || !tab || !tab.isSupported || tab.loadState !== 'loaded') return false;
+    if (!tab || !tab.isSupported || tab.loadState !== 'loaded') return false;
 
     const currentRecord = documentRecordByTabIdRef.current.get(tabId) ?? createDocumentRecord(null);
     const nextRecord = {
@@ -322,11 +324,21 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
       hasReceivedCanvasChange: false,
     };
     documentRecordByTabIdRef.current.set(tabId, nextRecord);
-    snapshotRef.current = snapshot;
+    if (activeTabIdRef.current === tabId) snapshotRef.current = snapshot;
     setDocumentVersionBump((current) => current + 1);
     setTabSaveState(tabId, resolveSnapshotSaveState(snapshot, nextRecord.savedFingerprint));
     return true;
   }, [setTabSaveState]);
+
+  const replaceActiveSnapshot = useCallback((snapshot: DiagramSnapshot) => {
+    const tabId = activeTabIdRef.current;
+    return tabId ? replaceSnapshotForTab(tabId, snapshot) : false;
+  }, [replaceSnapshotForTab]);
+
+  const getSnapshotForTab = useCallback((tabId: WorkspaceFileId) =>
+    documentRecordByTabIdRef.current.get(tabId)?.snapshot ?? null, []);
+
+  const isTabActive = useCallback((tabId: WorkspaceFileId) => activeTabIdRef.current === tabId, []);
 
   const openEntryAsTab = useCallback(async (entry: WorkspaceEntry) => {
     if (entry.kind === 'directory') return;
@@ -495,7 +507,7 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
     setTabSaveState(activeTab.id, resolveSnapshotSaveState(nextSnapshot, nextRecord.savedFingerprint));
   }, [confirm, setTabSaveState]);
 
-  const saveTab = useCallback(async (tabId: WorkspaceFileId) => {
+  const saveTab = useCallback(async (tabId: WorkspaceFileId, options?: { throwOnError?: boolean }) => {
     const tab = tabsRef.current.find((candidate) => candidate.id === tabId);
     const snapshot = documentRecordByTabIdRef.current.get(tabId)?.snapshot;
     if (!tab) return;
@@ -620,6 +632,7 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
             : candidate,
         ),
       );
+      if (options?.throwOnError) throw error;
     }
   }, [prompt, setTabSaveError]);
 
@@ -636,7 +649,10 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
     activeDocumentKey,
     snapshotRef,
     getCurrentSnapshot,
+    getSnapshotForTab,
+    isTabActive,
     handleSnapshotChange,
+    replaceSnapshotForTab,
     replaceActiveSnapshot,
     openEntryAsTab,
     openUntitledTab,
@@ -657,7 +673,10 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
     activeSnapshot,
     activeDocumentKey,
     getCurrentSnapshot,
+    getSnapshotForTab,
+    isTabActive,
     handleSnapshotChange,
+    replaceSnapshotForTab,
     replaceActiveSnapshot,
     openEntryAsTab,
     openUntitledTab,

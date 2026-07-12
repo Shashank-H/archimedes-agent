@@ -25,6 +25,11 @@ function toErrorMessage(error: unknown) {
 
 type ModelValidationError = { key: string; message: string } | null;
 
+export type DiagramPlanSession = {
+  getSnapshot: () => DiagramSnapshot | null;
+  applyPlan: (plan: DiagramPlanProposal) => Promise<void>;
+};
+
 type UseAgentReviewOptions = {
   settings: AppSettings;
   messages: ChatMessage[];
@@ -32,11 +37,10 @@ type UseAgentReviewOptions = {
   setMessages: Dispatch<SetStateAction<ChatMessage[]>>;
   snapshotRef: RefObject<DiagramSnapshot | null>;
   getCurrentSnapshot: () => DiagramSnapshot | null;
-  onApplyDiagramPlan: (plan: DiagramPlanProposal) => Promise<void>;
-  canApplyDiagramPlan: () => boolean;
+  createDiagramPlanSession: () => DiagramPlanSession | null;
 };
 
-export function useAgentReview({ settings, messages, setSettings, setMessages, snapshotRef, getCurrentSnapshot, onApplyDiagramPlan, canApplyDiagramPlan }: UseAgentReviewOptions) {
+export function useAgentReview({ settings, messages, setSettings, setMessages, snapshotRef, getCurrentSnapshot, createDiagramPlanSession }: UseAgentReviewOptions) {
   const [isBusy, setIsBusy] = useState(false);
   const [status, setStatus] = useState(() => llmProviderFactory.getProviderStatus(settings));
   const [modelValidationError, setModelValidationError] = useState<ModelValidationError>(null);
@@ -83,8 +87,9 @@ export function useAgentReview({ settings, messages, setSettings, setMessages, s
 
   const runAgentReview = useCallback(async ({ mode, prompt }: { mode: ReviewMode; prompt?: string }) => {
     if (isBusyRef.current) return;
-    const current = snapshotRef.current;
-    if (mode === ReviewMode.Diagramming && !canApplyDiagramPlan()) {
+    const diagramSession = mode === ReviewMode.Diagramming ? createDiagramPlanSession() : null;
+    const current = diagramSession?.getSnapshot() ?? snapshotRef.current;
+    if (mode === ReviewMode.Diagramming && !diagramSession) {
       const content = CHAT_COPY.selectFileFirst;
       appendMessage({ id: id('err'), role: 'assistant', content, createdAt: Date.now(), kind: ChatMessageKind.Diagramming });
       diagramAgentLogger.failure('diagram file inspection', new Error(content));
@@ -146,7 +151,7 @@ export function useAgentReview({ settings, messages, setSettings, setMessages, s
     try {
       if (mode === ReviewMode.Diagramming) {
         const result = await diagramAgentWorkflow.run(prompt?.trim() ?? '', {
-          getSnapshot: getCurrentSnapshot,
+          getSnapshot: diagramSession!.getSnapshot,
           captureImage: async (snapshot) => {
             const image = await exportDiagramImage(snapshot);
             return { base64: image.base64, mimeType: image.mimeType };
@@ -167,7 +172,7 @@ export function useAgentReview({ settings, messages, setSettings, setMessages, s
             });
             return content;
           },
-          applyPlan: onApplyDiagramPlan,
+          applyPlan: diagramSession!.applyPlan,
         });
         diagramAgentLogger.requestCompleted({ responseLength: result.response.length, planDetected: true });
         replaceMessageContent(assistantId, result.response);
@@ -195,14 +200,14 @@ export function useAgentReview({ settings, messages, setSettings, setMessages, s
       setStatus(llmProviderFactory.getProviderStatus(settings));
     } catch (error) {
       if (controller.signal.aborted) {
-        replaceMessageContent(assistantId, 'Request cancelled. Changes already applied before cancellation remain on the active diagram.');
+        replaceMessageContent(assistantId, 'Request cancelled before the diagram transaction was committed.');
         setStatus('Cancelled');
         return;
       }
       diagramAgentLogger.failure('agent request or diagram application', error);
       const message = toErrorMessage(error);
       const guidance = mode === ReviewMode.Diagramming
-        ? 'The edit stopped. Operations applied before the failure remain on the active diagram.'
+        ? 'The edit stopped before the diagram transaction was committed.'
         : `If this mentions images or unsupported input, verify that the selected ${llmProviderFactory.getProviderName(settings.provider)} model \`${settings.model}\` supports vision payloads.`;
       appendToken(assistantId, `\n\n⚠️ ${message}\n\n${guidance}`);
       captureAnalyticsEvent('diagram_review_failed', { mode });
@@ -211,7 +216,7 @@ export function useAgentReview({ settings, messages, setSettings, setMessages, s
       setIsBusy(false);
       inFlightAbortRef.current = null;
     }
-  }, [appendMessage, appendToken, buildLlmReviewMessages, canApplyDiagramPlan, getCurrentSnapshot, modelValidationError, onApplyDiagramPlan, replaceMessageContent, settings, setSettings, snapshotRef, updateWorkflowStep]);
+  }, [appendMessage, appendToken, buildLlmReviewMessages, createDiagramPlanSession, modelValidationError, replaceMessageContent, settings, setSettings, snapshotRef, updateWorkflowStep]);
 
   const scheduleProactiveReview = useCallback(() => {
     window.clearTimeout(proactiveTimerRef.current);

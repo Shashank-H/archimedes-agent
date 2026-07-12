@@ -113,12 +113,13 @@ export class DiagramAgentWorkflow {
       .addNode('applyOperations', async (state: WorkflowState) => {
         assertActive();
         if (!state.plan) throw new Error('No validated diagram plan is available.');
-        report('apply', 'running', `0/${state.plan.operations.length}`);
+        report('apply', 'running', `Validating ${state.plan.operations.length} operations`);
         for (const [index, operation] of state.plan.operations.entries()) {
           assertActive();
-          await dependencies.applyPlan({ ...state.plan, operations: [operation] });
           report('apply', 'running', describeOperation(operation, index, state.plan.operations.length));
         }
+        assertActive();
+        await dependencies.applyPlan(state.plan);
         report('apply', 'completed', `${state.plan.operations.length}/${state.plan.operations.length} operations`);
         return {};
       })

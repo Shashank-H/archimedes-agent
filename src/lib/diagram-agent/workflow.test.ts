@@ -34,8 +34,8 @@ describe('DiagramAgentWorkflow', () => {
       signal: new AbortController().signal,
     });
 
-    expect(applyPlan).toHaveBeenCalledTimes(2);
-    expect(applyPlan.mock.calls.every(([plan]) => plan.operations.length === 1)).toBe(true);
+    expect(applyPlan).toHaveBeenCalledTimes(1);
+    expect(applyPlan.mock.calls[0]?.[0].operations).toHaveLength(2);
     expect(result.plan.operations).toHaveLength(2);
     expect(steps).toContain('inspect:completed');
     expect(steps).toContain('verify:completed');

@@ -13,35 +13,57 @@ import { useChatMessages } from './hooks/useChatMessages';
 
 export function ChatProvider({ children }: { children: ReactNode }) {
   const { settings, handleSettingsChange } = useWorkspace();
-  const { activeTab, snapshotRef, getCurrentSnapshot, replaceActiveSnapshot, saveActiveTab } = useWorkspaceTabManager();
+  const {
+    activeTab,
+    snapshotRef,
+    getCurrentSnapshot,
+    getSnapshotForTab,
+    isTabActive,
+    replaceSnapshotForTab,
+    saveTab,
+  } = useWorkspaceTabManager();
   const { messages, setMessages, handleClearChat } = useChatMessages();
   const setSettings = useCallback((next: AppSettings | ((current: AppSettings) => AppSettings)) => {
     handleSettingsChange(typeof next === 'function' ? next(settings) : next);
   }, [handleSettingsChange, settings]);
 
-  const canApplyDiagramPlan = useCallback(
-    () => Boolean(activeTab?.isSupported && !activeTab.isUntitled && activeTab.loadState === 'loaded'),
-    [activeTab],
-  );
+  const createDiagramPlanSession = useCallback(() => {
+    const targetTab = activeTab;
+    if (!targetTab?.isSupported || targetTab.isUntitled || targetTab.loadState !== 'loaded') return null;
+    const targetId = targetTab.id;
 
-  const applyDiagramPlan = useCallback(async (plan: DiagramPlanProposal) => {
-    if (!canApplyDiagramPlan() || !activeTab) {
-      throw new Error('Select and open an Excalidraw file before asking me to draw on it.');
-    }
+    const assertTargetActive = () => {
+      if (!isTabActive(targetId)) throw new Error('The active diagram changed while the edit was running. No changes were committed.');
+    };
 
-    const currentSnapshot = getCurrentSnapshot();
-    if (!currentSnapshot) throw new Error('The opened Excalidraw file is still loading. Try again once it is ready.');
+    return {
+      getSnapshot: () => {
+        assertTargetActive();
+        return getSnapshotForTab(targetId);
+      },
+      applyPlan: async (plan: DiagramPlanProposal) => {
+        assertTargetActive();
+        const currentSnapshot = getSnapshotForTab(targetId);
+        if (!currentSnapshot) throw new Error('The target diagram is no longer available.');
 
-    diagramAgentLogger.planApplying(plan, { type: 'current' });
-    const nextSnapshot = diagramToolRuntime.applyPlan(currentSnapshot, plan);
-    if (!replaceActiveSnapshot(nextSnapshot)) throw new Error('The opened Excalidraw file is not ready to receive changes.');
-    await saveActiveTab();
-    diagramAgentLogger.planApplied({
-      tabId: activeTab.id,
-      beforeElementCount: currentSnapshot.elements.filter((element) => !element.isDeleted).length,
-      afterElementCount: nextSnapshot.elements.filter((element) => !element.isDeleted).length,
-    });
-  }, [activeTab, canApplyDiagramPlan, getCurrentSnapshot, replaceActiveSnapshot, saveActiveTab]);
+        diagramAgentLogger.planApplying(plan, { type: 'current' });
+        const nextSnapshot = diagramToolRuntime.applyPlan(currentSnapshot, plan);
+        assertTargetActive();
+        if (!replaceSnapshotForTab(targetId, nextSnapshot)) throw new Error('The target diagram is not ready to receive changes.');
+        try {
+          await saveTab(targetId, { throwOnError: true });
+        } catch (error) {
+          replaceSnapshotForTab(targetId, currentSnapshot);
+          throw error;
+        }
+        diagramAgentLogger.planApplied({
+          tabId: targetId,
+          beforeElementCount: currentSnapshot.elements.filter((element) => !element.isDeleted).length,
+          afterElementCount: nextSnapshot.elements.filter((element) => !element.isDeleted).length,
+        });
+      },
+    };
+  }, [activeTab, getSnapshotForTab, isTabActive, replaceSnapshotForTab, saveTab]);
 
   const agentReview = useAgentReview({
     settings,
@@ -50,8 +72,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     setMessages,
     snapshotRef,
     getCurrentSnapshot,
-    onApplyDiagramPlan: applyDiagramPlan,
-    canApplyDiagramPlan,
+    createDiagramPlanSession,
   });
   const {
     isBusy,
