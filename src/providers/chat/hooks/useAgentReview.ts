@@ -49,9 +49,10 @@ export function useAgentReview({ settings, messages, setSettings, setMessages, s
   const lastReviewSignatureRef = useRef('');
   const isBusyRef = useRef(false);
   const inFlightAbortRef = useRef<AbortController | null>(null);
+  const settingsRef = useRef(settings);
+  const runAssistantRef = useRef<((prompt: string, forcedIntent?: AssistantIntent) => Promise<void>) | null>(null);
   const buildLlmReviewMessages = useLlmReviewContext({ settings, messages, getSnapshot: getCurrentSnapshot });
-
-  useEffect(() => { isBusyRef.current = isBusy; }, [isBusy]);
+  settingsRef.current = settings;
 
   const updateMessages = useCallback((updater: (messages: ChatMessage[]) => ChatMessage[]) => {
     setMessages((current) => updater(current));
@@ -112,6 +113,12 @@ export function useAgentReview({ settings, messages, setSettings, setMessages, s
     const diagramSession = createDiagramPlanSession();
     const controller = new AbortController();
     const assistantId = id('assistant');
+    let editCommitted = false;
+
+    // Acquire the workflow lock synchronously. React state updates are not a
+    // mutex and leave a same-tick window for double-submit/proactive overlap.
+    isBusyRef.current = true;
+    inFlightAbortRef.current = controller;
 
     if (!forcedIntent) appendMessage({ id: id('user'), role: 'user', content: request, createdAt: Date.now(), kind: ChatMessageKind.Chat });
     appendMessage({
@@ -125,7 +132,6 @@ export function useAgentReview({ settings, messages, setSettings, setMessages, s
 
     setIsBusy(true);
     setStatus('Understanding request...');
-    inFlightAbortRef.current = controller;
     captureAnalyticsEvent('assistant_workflow_started', { source: forcedIntent ? 'proactive' : 'user', has_diagram: Boolean(current) });
 
     try {
@@ -153,7 +159,10 @@ export function useAgentReview({ settings, messages, setSettings, setMessages, s
                 return { base64: image.base64, mimeType: image.mimeType };
               },
               complete,
-              applyPlan: diagramSession.applyPlan,
+              applyPlan: async (plan) => {
+                await diagramSession.applyPlan(plan);
+                editCommitted = true;
+              },
               signal: controller.signal,
               onStep: (step) => updateWorkflowStep(assistantId, {
                 ...step,
@@ -177,7 +186,12 @@ export function useAgentReview({ settings, messages, setSettings, setMessages, s
       setStatus(llmProviderFactory.getProviderStatus(settings));
     } catch (error) {
       if (controller.signal.aborted) {
-        replaceMessageContent(assistantId, 'Request cancelled. No uncommitted diagram changes were applied.');
+        replaceMessageContent(
+          assistantId,
+          editCommitted
+            ? 'Request cancelled after the diagram changes were saved.'
+            : 'Request cancelled. No diagram changes were committed.',
+        );
         setStatus('Cancelled');
       } else {
         const message = toErrorMessage(error);
@@ -187,14 +201,20 @@ export function useAgentReview({ settings, messages, setSettings, setMessages, s
         setStatus(`${llmProviderFactory.getProviderName(settings.provider)} error`);
       }
     } finally {
-      setIsBusy(false);
-      inFlightAbortRef.current = null;
+      if (inFlightAbortRef.current === controller) {
+        isBusyRef.current = false;
+        inFlightAbortRef.current = null;
+        setIsBusy(false);
+      }
     }
   }, [appendMessage, buildLlmReviewMessages, complete, createDiagramPlanSession, modelValidationError, replaceMessageContent, settings, snapshotRef, updateWorkflowStep]);
 
+  runAssistantRef.current = runAssistant;
+
   const scheduleProactiveReview = useCallback(() => {
     window.clearTimeout(proactiveTimerRef.current);
-    if (!settings.autoReview) {
+    const currentSettings = settingsRef.current;
+    if (!currentSettings.autoReview) {
       firstUnsentChangeAtRef.current = null;
       return;
     }
@@ -206,25 +226,34 @@ export function useAgentReview({ settings, messages, setSettings, setMessages, s
       firstUnsentChangeAtRef.current = null;
       return;
     }
-    const delayMs = normalizeReviewDelayMs(settings.proactiveDelayMs);
-    const timeoutMs = normalizeReviewTimeoutMs(settings.proactiveCooldownMs);
+    const delayMs = normalizeReviewDelayMs(currentSettings.proactiveDelayMs);
+    const timeoutMs = normalizeReviewTimeoutMs(currentSettings.proactiveCooldownMs);
     const now = Date.now();
     firstUnsentChangeAtRef.current ??= now;
     const delay = Math.max(0, Math.min(delayMs, timeoutMs - (now - firstUnsentChangeAtRef.current)));
     proactiveTimerRef.current = window.setTimeout(() => {
+      const latest = snapshotRef.current;
+      const latestSignature = latest ? meaningfulSceneSignature(latest) : '';
+      const latestElementCount = latest?.elements.filter((element) => !element.isDeleted).length ?? 0;
+      if (!settingsRef.current.autoReview || latest !== current || latestSignature !== signature
+        || latestElementCount < MIN_ELEMENTS_FOR_PROACTIVE_REVIEW) {
+        firstUnsentChangeAtRef.current = null;
+        return;
+      }
       if (isBusyRef.current) {
         proactiveTimerRef.current = window.setTimeout(scheduleProactiveReview, delayMs);
         return;
       }
-      void runAssistant('Review the latest diagram change and offer one concise, actionable observation.', 'proactive_review');
+      void runAssistantRef.current?.('Review the latest diagram change and offer one concise, actionable observation.', 'proactive_review');
     }, delay);
-  }, [runAssistant, settings.autoReview, settings.proactiveCooldownMs, settings.proactiveDelayMs, snapshotRef]);
+  }, [snapshotRef]);
 
   const handleAssistantRequest = useCallback((prompt: string) => { void runAssistant(prompt); }, [runAssistant]);
   const handleCancel = useCallback(() => { inFlightAbortRef.current?.abort(); }, []);
 
   const handleTestConnection = useCallback(async () => {
     if (isBusyRef.current) return false;
+    isBusyRef.current = true;
     const providerName = llmProviderFactory.getProviderName(settings.provider);
     const validationKey = settingsValidationKey(settings);
     setIsBusy(true);
@@ -254,6 +283,7 @@ export function useAgentReview({ settings, messages, setSettings, setMessages, s
       });
       return false;
     } finally {
+      isBusyRef.current = false;
       setIsBusy(false);
     }
   }, [appendMessage, settings, setSettings]);

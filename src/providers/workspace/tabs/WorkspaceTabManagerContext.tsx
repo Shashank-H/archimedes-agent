@@ -510,14 +510,27 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
   const saveTab = useCallback(async (tabId: WorkspaceFileId, options?: { throwOnError?: boolean }) => {
     const tab = tabsRef.current.find((candidate) => candidate.id === tabId);
     const snapshot = documentRecordByTabIdRef.current.get(tabId)?.snapshot;
-    if (!tab) return;
-
-    if (tab.isUntitled && isEmptyDiagramSnapshot(snapshot)) {
-      setTabSaveError(tab.id, getEmptyUntitledSaveMessage());
+    if (!tab || !snapshot) {
+      if (options?.throwOnError) throw new Error('The target diagram is no longer available.');
       return;
     }
 
-    if (!canSaveWorkspaceTab(tab) || !snapshot) return;
+    if (tab.isUntitled && isEmptyDiagramSnapshot(snapshot)) {
+      const message = getEmptyUntitledSaveMessage();
+      setTabSaveError(tab.id, message);
+      if (options?.throwOnError) throw new Error(message);
+      return;
+    }
+
+    // Agent transactions replace the document record synchronously, while React's
+    // tab save-state catches up on the next render. A strict save must persist the
+    // captured snapshot even if this tab still appears "saved" in tabsRef.
+    if (!canSaveWorkspaceTab(tab)) {
+      if (!options?.throwOnError) return;
+      if (!tab.isSupported || tab.loadState !== 'loaded' || tab.providerKind === 'app') {
+        throw new Error('The target diagram cannot be saved.');
+      }
+    }
 
     setTabs((currentTabs) =>
       currentTabs.map((candidate) =>
@@ -585,7 +598,10 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
         return;
       }
 
-      if (tab.providerKind === 'app') return;
+      if (tab.providerKind === 'app') {
+        if (options?.throwOnError) throw new Error('App documents cannot be saved as diagrams.');
+        return;
+      }
 
       const provider = workspaceProviderFactory.getProvider(tab.providerKind);
       await provider.writeDocument({
