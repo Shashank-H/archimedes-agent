@@ -4,7 +4,9 @@
 
 Archimedes Agent is currently a client-heavy Tauri/Vite application. The Rust/Tauri layer provides the desktop shell, while the React frontend owns the diagram editor, assistant UI, local persistence, and Ollama communication.
 
-The assistant has three explicit modes: Chat is conversational and read-only, Review provides manual or proactive critique, and Edit / Build executes a canvas-mutating LangGraph workflow. The edit graph lives in `src/lib/diagram-agent/workflow.ts`; it inspects the active workspace snapshot, prepares a brief, asks the selected provider for a validated operation plan, preflights the full plan, atomically applies and saves it to the starting tab, rereads the canvas for verification, and reports the result. Switching tabs aborts before commit, and persistence failures restore the in-memory snapshot. Provider access remains behind `LlmProviderFactory`, while workspace mutations remain behind `WorkspaceTabManagerContext`.
+The assistant is one conversation backed entirely by LangGraph. `src/lib/assistant-agent/workflow.ts` is the supervisor graph: it classifies each request as conversation, review, edit, or review-and-edit, then routes into focused graph branches. Proactive reviews enter the same graph with an explicit system intent. The review-and-edit route composes critique with the diagram-edit subgraph, so findings become edit-plan context rather than a disconnected response.
+
+Canvas mutation remains isolated in `src/lib/diagram-agent/workflow.ts`. That subgraph inspects the active workspace snapshot, prepares a brief, asks the selected provider for a validated operation plan, preflights the full plan, atomically applies and saves it to the starting tab, rereads the canvas for verification, and reports the result. Switching tabs aborts before commit, and persistence failures restore the in-memory snapshot. Provider access remains behind `LlmProviderFactory`, while workspace mutations remain behind `WorkspaceTabManagerContext`.
 
 ```txt
 +-------------------------------------------------------------+

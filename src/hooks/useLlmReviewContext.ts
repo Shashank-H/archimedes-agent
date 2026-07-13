@@ -1,17 +1,18 @@
 import { useCallback } from 'react';
 import { exportDiagramImage } from '../lib/diagramImage';
 import { formatDiagramSummary } from '../lib/diagramSummary';
+import type { AssistantIntent } from '../lib/assistant-agent/types';
 import { ARCHITECTURE_REVIEWER_SYSTEM_PROMPT, buildReviewPrompt } from '../lib/llm/prompts';
 import type { AppSettings, ChatMessage, DiagramSnapshot, LlmChatMessage } from '../types';
 
-export type ReviewMode = 'manual' | 'proactive' | 'chat' | 'diagramming';
+export type ReviewMode = Extract<AssistantIntent, 'chat' | 'review' | 'proactive_review'>;
 
 const MAX_HISTORY_MESSAGES = 12;
 export const DESIGN_CHANGED_CONTEXT_MESSAGE =
   'The user has changed the design after the previous review. Review the updated design again and compare against the prior feedback where relevant.';
 
 function shouldIncludeHistory(mode: ReviewMode, settings: AppSettings) {
-  if (mode === 'proactive') return settings.includeHistoryInProactiveReviews;
+  if (mode === 'proactive_review') return settings.includeHistoryInProactiveReviews;
   return true;
 }
 
@@ -67,7 +68,13 @@ export async function buildReviewMessages({
 
   const diagram = await exportDiagramImage(inspectedSnapshot);
   const metadata = formatDiagramSummary(diagram.summary);
-  const prompt = buildReviewPrompt({ userPrompt, metadata, mode, thinkingLevel: settings.thinkingLevel, scene: formatSceneForAgent(inspectedSnapshot) });
+  const prompt = buildReviewPrompt({
+    userPrompt,
+    metadata,
+    mode: mode === 'proactive_review' ? 'proactive' : mode === 'review' ? 'manual' : 'chat',
+    thinkingLevel: settings.thinkingLevel,
+    scene: formatSceneForAgent(inspectedSnapshot),
+  });
   const history = shouldIncludeHistory(mode, settings) ? chatHistoryToLlmMessages(messages) : [];
   const designChangedContext: LlmChatMessage[] = designChangedSincePreviousReview
     ? [{ role: 'user', content: DESIGN_CHANGED_CONTEXT_MESSAGE }]

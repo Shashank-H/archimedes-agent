@@ -48,10 +48,8 @@ export type AppSettings = {
   providerConfigurationTestedKey: string;
 };
 
-export type AssistantMode = 'chat' | 'review' | 'edit';
-
 export type ChatWorkflowStep = {
-  id: 'inspect' | 'brief' | 'plan' | 'apply' | 'verify' | 'respond';
+  id: string;
   label: string;
   status: 'pending' | 'running' | 'completed' | 'failed';
   detail?: string;

@@ -25,7 +25,7 @@ export function MessageList({ messages, emptyState }: MessageListProps) {
               {message.kind && <small>{message.kind}</small>}
             </div>
             <div className="message-content">
-              {message.workflowSteps && (
+              {message.workflowSteps && message.workflowSteps.length > 0 && (
                 <ol className={chatPageStyles.workflowSteps} aria-label="Agent workflow progress">
                   {message.workflowSteps.map((step) => (
                     <li key={step.id} data-status={step.status}>
