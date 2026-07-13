@@ -10,13 +10,13 @@ type ChatComposerProps = {
   messages: ChatMessage[];
   isBusy: boolean;
   onSettingsChange: (settings: AppSettings) => void;
-  onSendChat: (prompt: string) => void;
-  onReview: (prompt?: string) => void;
+  onSubmit: (prompt: string) => void;
+  onCancel: () => void;
   onClearChat: () => void;
 };
 
-export function ChatComposer({ settings, messages, isBusy, onSettingsChange, onSendChat, onReview, onClearChat }: ChatComposerProps) {
-  const { prompt, setPrompt, textareaRef, submit } = useChatComposer({ isBusy, onSendChat });
+export function ChatComposer({ settings, messages, isBusy, onSettingsChange, onSubmit, onCancel, onClearChat }: ChatComposerProps) {
+  const { prompt, setPrompt, textareaRef, submit } = useChatComposer({ isBusy, onSendChat: onSubmit });
 
   return (
     <footer className="composer">
@@ -34,7 +34,20 @@ export function ChatComposer({ settings, messages, isBusy, onSettingsChange, onS
             />
           </div>
         </AppTooltip>
-        <AppTooltip label="Clear chat">
+        <AppTooltip label={settings.autoReview ? 'Turn off proactive diagram reviews' : 'Turn on proactive diagram reviews'}>
+          <button
+            type="button"
+            onClick={() => onSettingsChange({ ...settings, autoReview: !settings.autoReview })}
+            className={`input-corner-toggle ${settings.autoReview ? 'proactive-button' : 'manual-button'}`}
+            aria-label={settings.autoReview ? 'Disable proactive review' : 'Enable proactive review'}
+            aria-pressed={settings.autoReview}
+            disabled={isBusy}
+          >
+            <Icon name="zap" size={14} />
+            <span>{settings.autoReview ? 'Proactive on' : 'Proactive off'}</span>
+          </button>
+        </AppTooltip>
+        <AppTooltip label="Clear all assistant messages">
           <button
             type="button"
             className="composer-clear-button clear-button"
@@ -51,8 +64,9 @@ export function ChatComposer({ settings, messages, isBusy, onSettingsChange, onS
         <textarea
           ref={textareaRef}
           rows={1}
-          placeholder="Ask about the diagram, tradeoffs, scaling, security..."
+          placeholder="Ask a question, review the design, or describe what to change..."
           value={prompt}
+          disabled={isBusy}
           onChange={(event) => setPrompt(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) submit();
@@ -61,28 +75,15 @@ export function ChatComposer({ settings, messages, isBusy, onSettingsChange, onS
       </div>
 
       <div className="composer-action-row">
-        <AppTooltip label={settings.autoReview ? 'Currently proactive. Click for manual.' : 'Currently manual. Click for proactive.'}>
-          <button
-            type="button"
-            onClick={() => onSettingsChange({ ...settings, autoReview: !settings.autoReview })}
-            className={`input-corner-toggle ${settings.autoReview ? 'proactive-button' : 'manual-button'}`}
-            aria-label={settings.autoReview ? 'Switch to manual review' : 'Switch to proactive review'}
-            disabled={isBusy}
-          >
-            <Icon name={settings.autoReview ? 'zap' : 'user'} size={14} />
-            <span>{settings.autoReview ? 'Proactive' : 'Manual'}</span>
-          </button>
-        </AppTooltip>
+        <span className="composer-routing-hint">Automatically routed by LangGraph</span>
         <button
-          className={`send-button unified-action-button input-action-button ${prompt.trim() ? 'send-mode' : 'review-mode'}`}
-          onClick={() => (prompt.trim() ? submit() : onReview())}
-          disabled={isBusy}
-          aria-label={prompt.trim() ? 'Send message' : 'Review diagram'}
+          className={`send-button unified-action-button input-action-button ${isBusy ? 'cancel-mode' : 'send-mode'}`}
+          onClick={() => isBusy ? onCancel() : submit()}
+          disabled={!isBusy && !prompt.trim()}
+          aria-label={isBusy ? 'Cancel request' : 'Send to Archimedes'}
         >
-          <span className="action-icon-segment">
-            <Icon name={prompt.trim() ? 'send' : 'sparkles'} size={15} />
-          </span>
-          <span>{isBusy ? 'Thinking' : prompt.trim() ? 'Send' : 'Review'}</span>
+          <span className="action-icon-segment"><Icon name={isBusy ? 'x' : 'send'} size={15} /></span>
+          <span>{isBusy ? 'Cancel' : 'Send'}</span>
         </button>
       </div>
     </footer>

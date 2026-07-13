@@ -5,6 +5,26 @@
 
 .moduleAnchor { --css-module-anchor: 1; }
 
+.workflowSteps {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  list-style: none;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.workflowSteps li {
+  display: flex;
+  gap: 0.45rem;
+  align-items: baseline;
+}
+
+.workflowSteps li[data-status='running'] { color: var(--accent); }
+.workflowSteps li[data-status='completed'] { color: var(--text-secondary); }
+.workflowSteps li[data-status='failed'] { color: var(--danger); }
+
 
 :global(.message-list) {
   flex: 1;
@@ -79,6 +99,12 @@
 :global(.message-meta span) { color: var(--ink); }
 :global(.message-meta small) { color: var(--mute); }
 :global(.message-content) { color: var(--body); font-size: 14px; line-height: 20px; letter-spacing: -0.28px; }
+:global(.chat-section-panel) { display: flex; flex: 1; min-height: 0; flex-direction: column; }
+:global(.composer-routing-hint) {
+  color: var(--mute);
+  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+  font-size: 11px;
+}
 :global(.markdown-content > *:first-child) { margin-top: 0; }
 :global(.markdown-content > *:last-child) { margin-bottom: 0; }
 :global(.markdown-content p) { margin: 8px 0; }
