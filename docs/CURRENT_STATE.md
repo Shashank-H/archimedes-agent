@@ -21,6 +21,13 @@ A local-first diagramming and brainstorming app:
 - Manual review implemented.
 - Chat implemented.
 - Proactive review implemented.
+- Unified assistant conversation with automatic chat/review/edit/review-and-edit intent routing.
+- All assistant behavior, including proactive review, runs through a LangGraph supervisor workflow.
+- A registry-driven provider-neutral JSON tool loop supports Ollama, OpenAI-compatible, and OpenAI Codex without requiring native function calling.
+- Tool-led review reads fresh normalized Excalidraw scene data; edit/create uses a schema tool plus one atomic plan tool.
+- Review-and-edit keeps critique, tool results, mutation, and final response in one composed LangGraph transcript.
+- Agent workflow progress and cancellation implemented in the assistant UI.
+- Automated Vitest coverage exists for workflow routing, retry, cancellation, and plan validation.
 - Diagram image export implemented.
 - Ollama streaming implemented.
 - Settings implemented.
@@ -34,7 +41,7 @@ A local-first diagramming and brainstorming app:
 - Windows installer/exe has not been produced locally.
 - Native desktop bundle has not been produced in this environment.
 - Production hardening is not done.
-- No automated tests yet.
+
 - No file/project manager yet.
 - No polished visual design yet.
 
@@ -50,13 +57,15 @@ We are using:
 
 not the old `excalidraw` npm package.
 
-### Ollama only for now
+### Provider-neutral assistant tools
 
-The app targets local Ollama by default:
+The app defaults to local Ollama:
 
 ```txt
 http://localhost:11434
 ```
+
+OpenAI-compatible and OpenAI Codex providers use the same application-level JSON tool protocol. Provider-native function calling is not required.
 
 ### Model default
 
@@ -64,9 +73,9 @@ http://localhost:11434
 gemma4:e4b
 ```
 
-### Image-first agent context
+### Structured and visual agent context
 
-The app sends exported diagram images to the model. It does not rely on raw Excalidraw JSON for the main review.
+Diagram review is tool-led: the model reads compact normalized live Excalidraw JSON. The existing exported image remains useful supplementary visual context.
 
 ### Metadata is secondary
 
@@ -74,7 +83,7 @@ The app sends a lightweight metadata summary as text context. This helps the mod
 
 ### Full diagram JSON stays local
 
-The full Excalidraw scene is saved locally to restore the diagram after refresh. It is not sent wholesale to Ollama.
+The full Excalidraw scene is saved locally to restore the diagram after refresh. Tools expose only a compact normalized scene contract to the selected provider.
 
 ## Verified facts
 

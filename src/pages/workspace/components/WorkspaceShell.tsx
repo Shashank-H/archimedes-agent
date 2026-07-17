@@ -37,7 +37,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
     openUntitledTab,
     openAppSettingsTab,
   } = useWorkspaceTabManager();
-  const { handleWorkspaceSnapshotChanged, handleReview, isBusy, status } = useChat();
+  const { handleWorkspaceSnapshotChanged, handleAssistantRequest, isBusy, status } = useChat();
   const { sidebarWidth, handleResizePointerDown, handleResizeKeyDown } = useSidebarResize();
   const [isExplorerCollapsed, setIsExplorerCollapsed] = useState(false);
   const [isAssistantCollapsed, setIsAssistantCollapsed] = useState(false);
@@ -79,7 +79,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
           if (activeTabId) return saveTab(activeTabId);
           return undefined;
         }}
-        onReview={() => handleReview()}
+        onReview={() => handleAssistantRequest('Review this architecture diagram and identify the most important risks and improvements.')}
         onOpenSettings={handleOpenSettings}
       />
 

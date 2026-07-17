@@ -1,23 +1,32 @@
 import { type Dispatch, type RefObject, type SetStateAction, useCallback, useEffect, useRef, useState } from 'react';
+import { useLlmReviewContext } from '../../../hooks/useLlmReviewContext';
 import { captureAnalyticsEvent } from '../../../lib/analytics';
+import { assistantWorkflow } from '../../../lib/assistant-agent/workflow';
+import type { AssistantIntent, AssistantWorkflowStep } from '../../../lib/assistant-agent/types';
+import { ExcalidrawToolset } from '../../../lib/assistant-agent/tools/ExcalidrawToolset';
+import { diagramAgentLogger } from '../../../lib/diagram-agent/logging';
+import type { DiagramPlanProposal } from '../../../lib/diagram-agent/types';
 import { meaningfulSceneSignature } from '../../../lib/diagramSummary';
 import { llmProviderFactory } from '../../../lib/llm/provider';
 import { normalizeReviewDelayMs, normalizeReviewTimeoutMs } from '../../../lib/reviewTiming';
 import { settingsValidationKey } from '../../../lib/settingsValidation';
-import { useLlmReviewContext } from '../../../hooks/useLlmReviewContext';
-import type { AppSettings, ChatMessage, DiagramSnapshot } from '../../../types';
-import { CHAT_COPY, ChatMessageKind, MIN_ELEMENTS_FOR_PROACTIVE_REVIEW, ReviewMode } from '../constants';
+import type { AppSettings, ChatMessage, DiagramSnapshot, LlmChatMessage } from '../../../types';
+import { CHAT_COPY, ChatMessageKind, MIN_ELEMENTS_FOR_PROACTIVE_REVIEW } from '../constants';
 
 function id(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 function toErrorMessage(error: unknown) {
-  if (error instanceof Error) return error.message;
-  return String(error);
+  return error instanceof Error ? error.message : String(error);
 }
 
 type ModelValidationError = { key: string; message: string } | null;
+
+export type DiagramPlanSession = {
+  getSnapshot: () => DiagramSnapshot | null;
+  applyPlan: (plan: DiagramPlanProposal) => Promise<void>;
+};
 
 type UseAgentReviewOptions = {
   settings: AppSettings;
@@ -26,9 +35,10 @@ type UseAgentReviewOptions = {
   setMessages: Dispatch<SetStateAction<ChatMessage[]>>;
   snapshotRef: RefObject<DiagramSnapshot | null>;
   getCurrentSnapshot: () => DiagramSnapshot | null;
+  createDiagramPlanSession: () => DiagramPlanSession | null;
 };
 
-export function useAgentReview({ settings, messages, setSettings, setMessages, snapshotRef, getCurrentSnapshot }: UseAgentReviewOptions) {
+export function useAgentReview({ settings, messages, setSettings, setMessages, snapshotRef, getCurrentSnapshot, createDiagramPlanSession }: UseAgentReviewOptions) {
   const [isBusy, setIsBusy] = useState(false);
   const [status, setStatus] = useState(() => llmProviderFactory.getProviderStatus(settings));
   const [modelValidationError, setModelValidationError] = useState<ModelValidationError>(null);
@@ -38,12 +48,10 @@ export function useAgentReview({ settings, messages, setSettings, setMessages, s
   const lastReviewSignatureRef = useRef('');
   const isBusyRef = useRef(false);
   const inFlightAbortRef = useRef<AbortController | null>(null);
-
-  useEffect(() => {
-    isBusyRef.current = isBusy;
-  }, [isBusy]);
-
+  const settingsRef = useRef(settings);
+  const runAssistantRef = useRef<((prompt: string, forcedIntent?: AssistantIntent) => Promise<void>) | null>(null);
   const buildLlmReviewMessages = useLlmReviewContext({ settings, messages, getSnapshot: getCurrentSnapshot });
+  settingsRef.current = settings;
 
   const updateMessages = useCallback((updater: (messages: ChatMessage[]) => ChatMessage[]) => {
     setMessages((current) => updater(current));
@@ -53,135 +61,182 @@ export function useAgentReview({ settings, messages, setSettings, setMessages, s
     updateMessages((current) => [...current, message]);
   }, [updateMessages]);
 
-  const appendToken = useCallback((messageId: string, token: string) => {
-    updateMessages((current) =>
-      current.map((message) =>
-        message.id === messageId ? { ...message, content: message.content + token } : message,
-      ),
-    );
+  const replaceMessageContent = useCallback((messageId: string, content: string) => {
+    updateMessages((current) => current.map((message) => message.id === messageId ? { ...message, content } : message));
   }, [updateMessages]);
 
-  const runAgentReview = useCallback(async ({ mode, prompt }: { mode: ReviewMode; prompt?: string }) => {
-    if (isBusyRef.current) return;
-    const current = snapshotRef.current;
-    if (!current) {
-      appendMessage({ id: id('err'), role: 'assistant', content: CHAT_COPY.drawFirst, createdAt: Date.now(), kind: ChatMessageKind.Status });
-      return;
-    }
+  const updateWorkflowStep = useCallback((messageId: string, step: AssistantWorkflowStep) => {
+    updateMessages((current) => current.map((message) => {
+      if (message.id !== messageId) return message;
+      const steps = message.workflowSteps ?? [];
+      const existing = steps.some((candidate) => candidate.id === step.id);
+      return {
+        ...message,
+        workflowSteps: existing
+          ? steps.map((candidate) => candidate.id === step.id ? step : candidate)
+          : [...steps, step],
+      };
+    }));
+  }, [updateMessages]);
 
-    const liveElements = current.elements.filter((element) => !element.isDeleted);
-    const currentSignature = meaningfulSceneSignature(current);
-    const designChangedSincePreviousReview = mode === ReviewMode.Proactive && Boolean(lastReviewSignatureRef.current) && currentSignature !== lastReviewSignatureRef.current;
-    if (mode === ReviewMode.Proactive && liveElements.length < MIN_ELEMENTS_FOR_PROACTIVE_REVIEW) return;
+  const complete = useCallback(async (llmMessages: LlmChatMessage[], signal: AbortSignal) => {
+    let content = '';
+    await llmProviderFactory.streamChat({
+      settings,
+      messages: llmMessages,
+      signal,
+      onToken: (token) => { content += token; },
+      onSettingsChange: setSettings,
+    });
+    return content;
+  }, [settings, setSettings]);
+
+  const runAssistant = useCallback(async (prompt: string, forcedIntent?: AssistantIntent) => {
+    if (isBusyRef.current) return;
+    const request = prompt.trim();
+    if (!request) return;
 
     const validationError = modelValidationError?.key === settingsValidationKey(settings) ? modelValidationError.message : null;
     if (validationError) {
       appendMessage({
-        id: id('error'),
-        role: 'assistant',
+        id: id('error'), role: 'assistant', kind: ChatMessageKind.Error, createdAt: Date.now(),
         content: `Cannot use model \`${settings.model}\` yet. Save failed with: ${validationError}`,
-        createdAt: Date.now(),
-        kind: ChatMessageKind.Error,
       });
       setStatus(CHAT_COPY.modelSaveErrorStatus);
       return;
     }
 
-    captureAnalyticsEvent('diagram_review_started', {
-      mode,
-      live_element_count: liveElements.length,
-      auto_review_enabled: settings.autoReview,
-    });
-
-    setIsBusy(true);
-    setStatus(mode === ReviewMode.Proactive ? CHAT_COPY.proactiveStatus : CHAT_COPY.manualStatus);
+    const current = snapshotRef.current;
+    const currentSignature = current ? meaningfulSceneSignature(current) : '';
+    const designChanged = forcedIntent === 'proactive_review' && Boolean(lastReviewSignatureRef.current) && currentSignature !== lastReviewSignatureRef.current;
+    const diagramSession = createDiagramPlanSession();
     const controller = new AbortController();
+    const assistantId = id('assistant');
+    let editCommitted = false;
+
+    // Acquire the workflow lock synchronously. React state updates are not a
+    // mutex and leave a same-tick window for double-submit/proactive overlap.
+    isBusyRef.current = true;
     inFlightAbortRef.current = controller;
 
-    const assistantId = id('assistant');
-    if (prompt?.trim()) {
-      appendMessage({ id: id('user'), role: 'user', content: prompt.trim(), createdAt: Date.now(), kind: mode === ReviewMode.Manual ? ChatMessageKind.ManualReview : ChatMessageKind.Chat });
-    }
+    if (!forcedIntent) appendMessage({ id: id('user'), role: 'user', content: request, createdAt: Date.now(), kind: ChatMessageKind.Chat });
     appendMessage({
       id: assistantId,
       role: 'assistant',
       content: '',
       createdAt: Date.now(),
-      kind: mode === ReviewMode.Proactive ? ChatMessageKind.ProactiveReview : mode === ReviewMode.Manual ? ChatMessageKind.ManualReview : ChatMessageKind.Chat,
+      kind: forcedIntent === 'proactive_review' ? ChatMessageKind.ProactiveReview : ChatMessageKind.Chat,
+      workflowSteps: [],
     });
 
+    setIsBusy(true);
+    setStatus('Understanding request...');
+    captureAnalyticsEvent('assistant_workflow_started', { source: forcedIntent ? 'proactive' : 'user', has_diagram: Boolean(current) });
+
     try {
-      const llmMessages = await buildLlmReviewMessages({ mode, userPrompt: prompt, designChangedSincePreviousReview });
-      await llmProviderFactory.streamChat({
-        settings,
-        messages: llmMessages,
+      const result = await assistantWorkflow.run(request, {
         signal: controller.signal,
-        onToken: (token) => appendToken(assistantId, token),
-        onSettingsChange: setSettings,
-      });
+        hasDiagram: Boolean(diagramSession),
+        complete,
+        tools: diagramSession ? new ExcalidrawToolset({
+          getSnapshot: diagramSession.getSnapshot,
+          applyPlan: async (plan) => {
+            await diagramSession.applyPlan(plan);
+            editCommitted = true;
+          },
+        }).definitions() : [],
+        onStep: (step) => {
+          setStatus(`${step.label}${step.detail ? ` · ${step.detail}` : step.status === 'running' ? '...' : ''}`);
+          updateWorkflowStep(assistantId, step);
+        },
+        buildMessages: async (intent) => buildLlmReviewMessages({
+          mode: intent === 'proactive_review'
+            ? 'proactive_review'
+            : intent === 'review' || intent === 'review_edit' ? 'review' : 'chat',
+          userPrompt: request,
+          designChangedSincePreviousReview: designChanged,
+        }),
+      }, forcedIntent ? { intent: forcedIntent } : undefined);
+
+      replaceMessageContent(assistantId, result.response);
       lastReviewSignatureRef.current = currentSignature;
-      if (mode === ReviewMode.Proactive && current) {
+      if (forcedIntent === 'proactive_review') {
         lastSentSignatureRef.current = currentSignature;
         firstUnsentChangeAtRef.current = null;
       }
-      captureAnalyticsEvent('diagram_review_completed', { mode });
+      captureAnalyticsEvent('assistant_workflow_completed', { intent: result.intent });
+      diagramAgentLogger.requestCompleted({ responseLength: result.response.length, planDetected: result.intent === 'edit' || result.intent === 'review_edit' });
       setStatus(llmProviderFactory.getProviderStatus(settings));
     } catch (error) {
-      const message = toErrorMessage(error);
-      appendToken(
-        assistantId,
-        `\n\n⚠️ ${message}\n\nIf this mentions images or unsupported input, verify that the selected ${llmProviderFactory.getProviderName(settings.provider)} model \`${settings.model}\` supports vision payloads.`,
-      );
-      captureAnalyticsEvent('diagram_review_failed', { mode });
-      setStatus(`${llmProviderFactory.getProviderName(settings.provider)} error`);
+      if (controller.signal.aborted) {
+        replaceMessageContent(
+          assistantId,
+          editCommitted
+            ? 'Request cancelled after the diagram changes were saved.'
+            : 'Request cancelled. No diagram changes were committed.',
+        );
+        setStatus('Cancelled');
+      } else {
+        const message = toErrorMessage(error);
+        replaceMessageContent(assistantId, `⚠️ ${message}`);
+        diagramAgentLogger.failure('assistant workflow', error);
+        captureAnalyticsEvent('assistant_workflow_failed', { source: forcedIntent ? 'proactive' : 'user' });
+        setStatus(`${llmProviderFactory.getProviderName(settings.provider)} error`);
+      }
     } finally {
-      setIsBusy(false);
-      inFlightAbortRef.current = null;
+      if (inFlightAbortRef.current === controller) {
+        isBusyRef.current = false;
+        inFlightAbortRef.current = null;
+        setIsBusy(false);
+      }
     }
-  }, [appendMessage, appendToken, buildLlmReviewMessages, modelValidationError, settings, snapshotRef]);
+  }, [appendMessage, buildLlmReviewMessages, complete, createDiagramPlanSession, modelValidationError, replaceMessageContent, settings, snapshotRef, updateWorkflowStep]);
+
+  runAssistantRef.current = runAssistant;
 
   const scheduleProactiveReview = useCallback(() => {
     window.clearTimeout(proactiveTimerRef.current);
-    if (!settings.autoReview) {
+    const currentSettings = settingsRef.current;
+    if (!currentSettings.autoReview) {
       firstUnsentChangeAtRef.current = null;
       return;
     }
-
     const current = snapshotRef.current;
     if (!current) return;
-
+    const liveElements = current.elements.filter((element) => !element.isDeleted);
     const signature = meaningfulSceneSignature(current);
-    if (!signature || signature === lastSentSignatureRef.current) {
+    if (liveElements.length < MIN_ELEMENTS_FOR_PROACTIVE_REVIEW || !signature || signature === lastSentSignatureRef.current) {
       firstUnsentChangeAtRef.current = null;
       return;
     }
-
-    const reviewDelayMs = normalizeReviewDelayMs(settings.proactiveDelayMs);
-    const reviewTimeoutMs = normalizeReviewTimeoutMs(settings.proactiveCooldownMs);
+    const delayMs = normalizeReviewDelayMs(currentSettings.proactiveDelayMs);
+    const timeoutMs = normalizeReviewTimeoutMs(currentSettings.proactiveCooldownMs);
     const now = Date.now();
     firstUnsentChangeAtRef.current ??= now;
-    const maxWaitRemaining = reviewTimeoutMs - (now - firstUnsentChangeAtRef.current);
-    const delay = Math.max(0, Math.min(reviewDelayMs, maxWaitRemaining));
-
+    const delay = Math.max(0, Math.min(delayMs, timeoutMs - (now - firstUnsentChangeAtRef.current)));
     proactiveTimerRef.current = window.setTimeout(() => {
-      if (isBusyRef.current) {
-        proactiveTimerRef.current = window.setTimeout(scheduleProactiveReview, reviewDelayMs);
+      const latest = snapshotRef.current;
+      const latestSignature = latest ? meaningfulSceneSignature(latest) : '';
+      const latestElementCount = latest?.elements.filter((element) => !element.isDeleted).length ?? 0;
+      if (!settingsRef.current.autoReview || latest !== current || latestSignature !== signature
+        || latestElementCount < MIN_ELEMENTS_FOR_PROACTIVE_REVIEW) {
+        firstUnsentChangeAtRef.current = null;
         return;
       }
-      void runAgentReview({ mode: ReviewMode.Proactive });
+      if (isBusyRef.current) {
+        proactiveTimerRef.current = window.setTimeout(scheduleProactiveReview, delayMs);
+        return;
+      }
+      void runAssistantRef.current?.('Review the latest diagram change and offer one concise, actionable observation.', 'proactive_review');
     }, delay);
-  }, [runAgentReview, settings.autoReview, settings.proactiveCooldownMs, settings.proactiveDelayMs, snapshotRef]);
+  }, [snapshotRef]);
 
-  const handleSendChat = useCallback((prompt: string) => {
-    void runAgentReview({ mode: ReviewMode.Chat, prompt });
-  }, [runAgentReview]);
-
-  const handleReview = useCallback((prompt?: string) => {
-    void runAgentReview({ mode: ReviewMode.Manual, prompt: prompt || CHAT_COPY.defaultReviewPrompt });
-  }, [runAgentReview]);
+  const handleAssistantRequest = useCallback((prompt: string) => { void runAssistant(prompt); }, [runAssistant]);
+  const handleCancel = useCallback(() => { inFlightAbortRef.current?.abort(); }, []);
 
   const handleTestConnection = useCallback(async () => {
     if (isBusyRef.current) return false;
+    isBusyRef.current = true;
     const providerName = llmProviderFactory.getProviderName(settings.provider);
     const validationKey = settingsValidationKey(settings);
     setIsBusy(true);
@@ -189,35 +244,29 @@ export function useAgentReview({ settings, messages, setSettings, setMessages, s
     try {
       const result = await llmProviderFactory.testConnection(settings, setSettings);
       setModelValidationError(null);
-      setSettings((currentSettings) =>
-        settingsValidationKey(currentSettings) === validationKey
-          ? { ...currentSettings, providerConfigurationTestedKey: validationKey }
-          : currentSettings,
-      );
+      setSettings((currentSettings) => settingsValidationKey(currentSettings) === validationKey
+        ? { ...currentSettings, providerConfigurationTestedKey: validationKey }
+        : currentSettings);
       setStatus(`Saved · ${providerName} · ${settings.model}`);
-      captureAnalyticsEvent('llm_connection_tested', { provider: settings.provider, ok: true, supports_vision: result.supportsVision });
       const visionNote = result.visionSupportKnown
-        ? result.supportsVision
-          ? 'The selected model advertises vision support.'
-          : 'Warning: the selected model does not advertise vision support, so image-based review may fail or require a vision-capable model/tag.'
-        : 'Vision support could not be verified from the provider model list; ensure the selected model supports image inputs.';
+        ? result.supportsVision ? 'The selected model advertises vision support.' : 'Warning: the selected model does not advertise vision support.'
+        : 'Vision support could not be verified; diagram review and editing require image input support.';
       appendMessage({
-        id: id('status'),
-        role: 'assistant',
+        id: id('status'), role: 'assistant', createdAt: Date.now(), kind: result.supportsVision ? 'status' : 'error',
         content: `Saved and verified ${providerName} at ${settings.endpoint}. Model: ${settings.model}. Test response: “${result.responseText ?? 'OK'}”. ${visionNote}`,
-        createdAt: Date.now(),
-        kind: result.supportsVision ? 'status' : 'error',
       });
       return true;
     } catch (error) {
       const errorText = toErrorMessage(error);
-      const message = `Settings were saved, but ${providerName} could not complete a chat test with model \`${settings.model}\`. Fix the highlighted field/configuration before using this model. (${errorText})`;
       setModelValidationError({ key: validationKey, message: errorText });
-      captureAnalyticsEvent('llm_connection_tested', { provider: settings.provider, ok: false });
       setStatus(CHAT_COPY.savedWithModelErrorStatus);
-      appendMessage({ id: id('error'), role: 'assistant', content: message, createdAt: Date.now(), kind: ChatMessageKind.Error });
+      appendMessage({
+        id: id('error'), role: 'assistant', kind: ChatMessageKind.Error, createdAt: Date.now(),
+        content: `Settings were saved, but ${providerName} could not complete a chat test with model \`${settings.model}\`. (${errorText})`,
+      });
       return false;
     } finally {
+      isBusyRef.current = false;
       setIsBusy(false);
     }
   }, [appendMessage, settings, setSettings]);
@@ -229,11 +278,9 @@ export function useAgentReview({ settings, messages, setSettings, setMessages, s
     }
   }, [settings.autoReview]);
 
-  useEffect(() => {
-    return () => {
-      window.clearTimeout(proactiveTimerRef.current);
-      inFlightAbortRef.current?.abort();
-    };
+  useEffect(() => () => {
+    window.clearTimeout(proactiveTimerRef.current);
+    inFlightAbortRef.current?.abort();
   }, []);
 
   return {
@@ -243,8 +290,8 @@ export function useAgentReview({ settings, messages, setSettings, setMessages, s
     setStatus,
     setModelValidationError,
     scheduleProactiveReview,
-    handleSendChat,
-    handleReview,
+    handleAssistantRequest,
+    handleCancel,
     handleTestConnection,
   };
 }
