@@ -2,7 +2,11 @@
 
 ## Overview
 
-Archimedes Agent is currently a client-heavy Tauri/Vite application. The Rust/Tauri layer provides the desktop shell, while the React frontend owns the diagram editor, assistant UI, local persistence, and Ollama communication.
+Archimedes Agent is currently a client-heavy Tauri/Vite application. The Rust/Tauri layer provides the desktop shell, while the React frontend owns the diagram editor, assistant UI, local persistence, provider abstraction, and LangGraph orchestration.
+
+The assistant is one conversation backed entirely by a provider-neutral LangGraph supervisor in `src/lib/assistant-agent/workflow.ts`. It classifies each request as conversation, review, edit, or review-and-edit; forced proactive reviews bypass classification but traverse the same graph. After routing, every configured provider (Ollama, OpenAI-compatible, and OpenAI Codex) uses the existing completion interface in a strict application-level JSON `model -> tools -> model` loop. This is tool-call emulation owned by the application, not provider-native function calling. Native provider tools can be added later behind the same registry contract.
+
+`ToolRegistry` owns typed manifests, capability filtering, argument validation, execution, and structured results. `ExcalidrawToolset` initially registers `read_excalidraw_schema`, `read_diagram`, and `apply_diagram_plan`. Reads normalize a fresh captured-tab scene with geometry, labels, grouping, framing, bindings, and persistent app state. Writes reuse the captured workspace transaction: the complete plan is validated and preflighted before one in-memory replacement and one strict save; tab switches abort before commit, and save failures roll back the original snapshot. React hooks only adapt graph steps to the existing assistant message UI and provide the captured transaction bridge.
 
 ```txt
 +-------------------------------------------------------------+
@@ -101,7 +105,7 @@ Current summary includes:
 - unlabeled component count;
 - a small list of obvious unlabeled component IDs.
 
-This is intentionally not the full Excalidraw JSON. The model primarily receives the image.
+This is intentionally not the full Excalidraw JSON. Diagram-aware graph routes use `read_diagram` for compact structured scene data; the exported image and summary are supplementary context.
 
 ### `src/lib/llm/ollama.ts`
 

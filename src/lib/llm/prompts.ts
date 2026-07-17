@@ -16,6 +16,7 @@ export function buildReviewPrompt(args: {
   metadata: string;
   mode: 'manual' | 'proactive' | 'chat';
   thinkingLevel: 'off' | 'low' | 'medium' | 'high';
+  scene: string;
 }) {
   const base = args.userPrompt?.trim() || 'Review this architecture diagram.';
   const modeInstruction =
@@ -29,5 +30,5 @@ export function buildReviewPrompt(args: {
       ? 'Thinking level: off. Answer directly. Do not include hidden reasoning, chain-of-thought, scratchpad text, or <think>...</think> blocks in the response.'
       : `Thinking level: ${args.thinkingLevel}. Use that amount of internal reasoning, but only show the final concise answer.`;
 
-  return `${modeInstruction}\n${thinkingInstruction}\n\nUser request: ${base}\n\nSupporting Excalidraw metadata (secondary to the image):\n${args.metadata}`;
+  return `${modeInstruction}\n${thinkingInstruction}\n\nUser request: ${base}\n\nInspected Excalidraw scene:\n${args.scene}\n\nSupporting Excalidraw metadata (secondary to the image):\n${args.metadata}`;
 }
