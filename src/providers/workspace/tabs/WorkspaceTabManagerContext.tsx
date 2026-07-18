@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -151,6 +152,8 @@ function createDocumentRecord(snapshot: DiagramSnapshot | null): WorkspaceDocume
   };
 }
 
+export const AUTOSAVE_DELAY_MS = 500;
+
 const EMPTY_DIAGRAM_SAVE_MESSAGE = 'You cannot save an empty diagram.';
 
 export function canSaveWorkspaceTab(tab: WorkspaceTab | null | undefined) {
@@ -161,8 +164,88 @@ export function canSaveWorkspaceTab(tab: WorkspaceTab | null | undefined) {
   );
 }
 
-function hasUnsavedWorkspaceTabChanges(tab: WorkspaceTab | null | undefined) {
-  return tab?.saveState === 'dirty' || tab?.saveState === 'error';
+export function hasUnsafeWorkspaceTabChanges(tab: WorkspaceTab | null | undefined) {
+  return tab?.saveState === 'dirty' || tab?.saveState === 'saving' || tab?.saveState === 'error';
+}
+
+export class WorkspaceSaveInFlightGuard<TabId> {
+  private readonly saveByTabId = new Map<TabId, Promise<void>>();
+
+  run(tabId: TabId, save: () => Promise<void>) {
+    const currentSave = this.saveByTabId.get(tabId);
+    if (currentSave) return currentSave;
+
+    const nextSave = save().finally(() => {
+      if (this.saveByTabId.get(tabId) === nextSave) {
+        this.saveByTabId.delete(tabId);
+      }
+    });
+    this.saveByTabId.set(tabId, nextSave);
+    return nextSave;
+  }
+}
+
+type WorkspaceAutosaveCandidate = {
+  tab: WorkspaceTab;
+  snapshot: DiagramSnapshot | null;
+};
+
+type WorkspaceAutosaveTimer = {
+  timerId: ReturnType<typeof setTimeout>;
+  fingerprint: string | null;
+};
+
+export class WorkspaceAutosaveDebouncer<TabId extends WorkspaceFileId> {
+  private readonly timerByTabId = new Map<TabId, WorkspaceAutosaveTimer>();
+
+  constructor(
+    private readonly delayMs: number,
+    private readonly saveTab: (tabId: TabId) => void,
+  ) {}
+
+  sync(candidates: WorkspaceAutosaveCandidate[], autoSaveFiles: boolean) {
+    if (!autoSaveFiles) {
+      this.dispose();
+      return;
+    }
+
+    const qualifyingTabIds = new Set<TabId>();
+
+    for (const { tab, snapshot } of candidates) {
+      const tabId = tab.id as TabId;
+      if (!canAutoSaveWorkspaceTab(tab, snapshot, autoSaveFiles)) continue;
+
+      qualifyingTabIds.add(tabId);
+      const fingerprint = createSnapshotFingerprint(snapshot);
+      const currentTimer = this.timerByTabId.get(tabId);
+      if (currentTimer?.fingerprint === fingerprint) continue;
+
+      this.clear(tabId);
+      const timerId = setTimeout(() => {
+        this.timerByTabId.delete(tabId);
+        this.saveTab(tabId);
+      }, this.delayMs);
+      this.timerByTabId.set(tabId, { timerId, fingerprint });
+    }
+
+    for (const tabId of this.timerByTabId.keys()) {
+      if (!qualifyingTabIds.has(tabId)) this.clear(tabId);
+    }
+  }
+
+  dispose() {
+    for (const tabId of this.timerByTabId.keys()) {
+      this.clear(tabId);
+    }
+  }
+
+  private clear(tabId: TabId) {
+    const timer = this.timerByTabId.get(tabId);
+    if (!timer) return;
+
+    clearTimeout(timer.timerId);
+    this.timerByTabId.delete(tabId);
+  }
 }
 
 function createClearedSnapshot(snapshot: DiagramSnapshot | null): DiagramSnapshot {
@@ -189,9 +272,25 @@ function getEmptyUntitledSaveMessage() {
   return EMPTY_DIAGRAM_SAVE_MESSAGE;
 }
 
+export function canAutoSaveWorkspaceTab(
+  tab: WorkspaceTab | null | undefined,
+  snapshot: DiagramSnapshot | null | undefined,
+  autoSaveFiles: boolean,
+) {
+  return Boolean(
+    autoSaveFiles
+      && snapshot
+      && tab?.isSupported
+      && !tab.isUntitled
+      && tab.providerKind !== 'app'
+      && tab.loadState === 'loaded'
+      && tab.saveState === 'dirty',
+  );
+}
+
 const WorkspaceTabManagerContext = createContext<WorkspaceTabManagerContextValue | null>(null);
 
-export function WorkspaceTabManagerProvider({ children }: { children: ReactNode }) {
+export function WorkspaceTabManagerProvider({ children, autoSaveFiles = false }: { children: ReactNode; autoSaveFiles?: boolean }) {
   const { confirm, prompt, dialogs } = useAppDialogs();
   const initialLocalDrafts = useMemo(() => appStorage.loadLocalDrafts(), []);
   const initialLocalDraftTabs = useMemo(() => initialLocalDrafts.map((draft) => createUntitledTab(draft)), [initialLocalDrafts]);
@@ -210,6 +309,9 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
     root: null,
     onWorkspaceFileCreated: () => undefined,
   });
+  const saveInFlightGuardRef = useRef(new WorkspaceSaveInFlightGuard<WorkspaceFileId>());
+  const autosaveDebouncerRef = useRef<WorkspaceAutosaveDebouncer<WorkspaceFileId> | null>(null);
+  const [autosaveRevision, setAutosaveRevision] = useState(0);
 
   const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? tabs[0] ?? null;
   const activeRecord = activeTab ? documentRecordByTabIdRef.current.get(activeTab.id) ?? null : null;
@@ -300,6 +402,7 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
     };
 
     documentRecordByTabIdRef.current.set(tabId, nextRecord);
+    setAutosaveRevision((current) => current + 1);
     if (activeTabIdRef.current === tabId) {
       snapshotRef.current = snapshot;
     }
@@ -412,7 +515,7 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
   const closeTab = useCallback(async (tabId: WorkspaceFileId) => {
     const tab = tabsRef.current.find((candidate) => candidate.id === tabId);
     if (!tab) return;
-    if (hasUnsavedWorkspaceTabChanges(tab)) {
+    if (hasUnsafeWorkspaceTabChanges(tab)) {
       const shouldClose = await confirm({
         ...WORKSPACE_TAB_DIALOG_COPY.closeDirtyTab(tab),
         variant: 'danger',
@@ -438,7 +541,7 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
     const currentTabs = tabsRef.current;
     if (currentTabs.length === 0) return;
 
-    const unsavedTabs = currentTabs.filter(hasUnsavedWorkspaceTabChanges);
+    const unsavedTabs = currentTabs.filter(hasUnsafeWorkspaceTabChanges);
     if (unsavedTabs.length > 0) {
       const shouldClose = await confirm({
         ...WORKSPACE_TAB_DIALOG_COPY.closeAllTabs(currentTabs.length, unsavedTabs.length, unsavedTabs[0]),
@@ -475,7 +578,7 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
     setTabSaveState(activeTab.id, resolveSnapshotSaveState(nextSnapshot, nextRecord.savedFingerprint));
   }, [confirm, setTabSaveState]);
 
-  const saveTab = useCallback(async (tabId: WorkspaceFileId) => {
+  const saveTab = useCallback(async (tabId: WorkspaceFileId) => saveInFlightGuardRef.current.run(tabId, async () => {
     const tab = tabsRef.current.find((candidate) => candidate.id === tabId);
     const snapshot = documentRecordByTabIdRef.current.get(tabId)?.snapshot;
     if (!tab) return;
@@ -601,12 +704,33 @@ export function WorkspaceTabManagerProvider({ children }: { children: ReactNode 
         ),
       );
     }
-  }, [prompt, setTabSaveError]);
+  }), [prompt, setTabSaveError]);
 
   const saveActiveTab = useCallback(async () => {
     const activeTabId = activeTabIdRef.current;
     if (activeTabId) await saveTab(activeTabId);
   }, [saveTab]);
+
+  useEffect(() => {
+    autosaveDebouncerRef.current = new WorkspaceAutosaveDebouncer(AUTOSAVE_DELAY_MS, (tabId) => {
+      void saveTab(tabId);
+    });
+
+    return () => {
+      autosaveDebouncerRef.current?.dispose();
+      autosaveDebouncerRef.current = null;
+    };
+  }, [saveTab]);
+
+  useEffect(() => {
+    autosaveDebouncerRef.current?.sync(
+      tabs.map((tab) => ({
+        tab,
+        snapshot: documentRecordByTabIdRef.current.get(tab.id)?.snapshot ?? null,
+      })),
+      autoSaveFiles,
+    );
+  }, [autoSaveFiles, autosaveRevision, saveTab, tabs]);
 
   const value = useMemo<WorkspaceTabManagerContextValue>(() => ({
     tabs,

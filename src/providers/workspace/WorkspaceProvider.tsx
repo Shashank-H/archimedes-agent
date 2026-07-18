@@ -51,9 +51,14 @@ function entryForPathInRoot(path: string, root: WorkspaceRoot): WorkspaceEntry {
   };
 }
 
-function WorkspaceContextProvider({ children }: { children: ReactNode }) {
+type WorkspaceContextProviderProps = {
+  children: ReactNode;
+  settings: ReturnType<typeof useWorkspaceSettings>['settings'];
+  handleSettingsChange: ReturnType<typeof useWorkspaceSettings>['handleSettingsChange'];
+};
+
+function WorkspaceContextProvider({ children, settings, handleSettingsChange }: WorkspaceContextProviderProps) {
   const apiRef = useRef<ExcalidrawApi | null>(null);
-  const { settings, handleSettingsChange } = useWorkspaceSettings();
   const tree = useWorkspaceTree();
   const { openEntryAsTab, setWorkspaceSaveTarget } = useWorkspaceTabManager();
 
@@ -164,10 +169,12 @@ function WorkspaceContextProvider({ children }: { children: ReactNode }) {
 }
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
+  const { settings, handleSettingsChange } = useWorkspaceSettings();
+
   return (
-    <WorkspaceTabManagerProvider>
+    <WorkspaceTabManagerProvider autoSaveFiles={settings.autoSaveFiles}>
       <GlobalShortcutsProvider>
-        <WorkspaceContextProvider>{children}</WorkspaceContextProvider>
+        <WorkspaceContextProvider settings={settings} handleSettingsChange={handleSettingsChange}>{children}</WorkspaceContextProvider>
       </GlobalShortcutsProvider>
     </WorkspaceTabManagerProvider>
   );

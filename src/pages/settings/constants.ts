@@ -32,6 +32,7 @@ export const OPEN_SOURCE_CREDITS = [
   { name: 'Tauri HTTP Plugin', packageName: '@tauri-apps/plugin-http / tauri-plugin-http', license: 'Apache-2.0 OR MIT', url: 'https://github.com/tauri-apps/plugins-workspace', note: 'Desktop HTTP client used by OpenAI Codex OAuth without a custom Rust proxy.' },
   { name: 'React Hotkeys Hook', packageName: 'react-hotkeys-hook', license: 'MIT', url: 'https://github.com/JohannesKlauss/react-hotkeys-hook', note: 'Global keyboard shortcut handling.' },
   { name: 'Vite', packageName: 'vite / @vitejs/plugin-react', license: 'MIT', url: 'https://vite.dev', note: 'Development server and production bundler.' },
+  { name: 'Vitest', packageName: 'vitest', license: 'MIT', url: 'https://vitest.dev', note: 'Unit test runner used for app behavior tests.' },
   { name: 'TypeScript', packageName: 'typescript', license: 'Apache-2.0', url: 'https://www.typescriptlang.org', note: 'Typed JavaScript language tooling.' },
   { name: 'DefinitelyTyped', packageName: '@types/node / @types/react / @types/react-dom', license: 'MIT', url: 'https://github.com/DefinitelyTyped/DefinitelyTyped', note: 'Community TypeScript type definitions.' },
 ] as const;

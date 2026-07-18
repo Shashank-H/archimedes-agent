@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "test": "vitest run",
     "sync:logos": "bash scripts/sync-logos.sh",
     "icons": "npm run sync:logos && tauri icon logos/logo.png && rm -rf src-tauri/icons/ios src-tauri/icons/android src-tauri/icons/Square*Logo.png src-tauri/icons/StoreLogo.png src-tauri/icons/icon.png src-tauri/icons/64x64.png",
     "preview": "vite preview",
@@ -33,6 +34,7 @@
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.6.0",
     "typescript": "^5.8.0",
-    "vite": "^7.0.0"
+    "vite": "^7.0.0",
+    "vitest": "^4.1.10"
   }
 }
