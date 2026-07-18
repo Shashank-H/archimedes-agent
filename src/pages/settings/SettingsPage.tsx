@@ -451,6 +451,34 @@ export function SettingsPage() {
                 </button>
               </AppTooltip>
           </div>
+          <div className="settings-editor-card settings-option-card">
+            <span className="settings-option-icon" aria-hidden="true">
+              <Icon name="file" size={16} />
+            </span>
+            <div className="settings-option-copy">
+              <div className="settings-option-title-row">
+                <span className="settings-option-title">Autosave files</span>
+                <AppTooltip label="When enabled, edits to files that already exist on disk are saved automatically. Untitled diagrams still require manual Save.">
+                  <button type="button" className="settings-help-icon" aria-label="Autosave files information">
+                    <Icon name="info" size={13} />
+                  </button>
+                </AppTooltip>
+              </div>
+              <p className="settings-option-description">
+                Off by default. Automatically persists changes only for already-saved workspace files.
+              </p>
+            </div>
+            <AppSwitch
+              checked={settings.autoSaveFiles}
+              ariaLabel="Autosave files"
+              onCheckedChange={(checked) =>
+                onSettingsChange({
+                  ...settings,
+                  autoSaveFiles: checked,
+                })
+              }
+            />
+          </div>
         </section>
         <section id="settings-privacy" className={sectionClassName('privacy')}>
           {renderSectionHeader('privacy')}

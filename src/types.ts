@@ -41,6 +41,7 @@ export type AppSettings = {
   thinkingLevel: ThinkingLevel;
   theme: AppTheme;
   autoReview: boolean;
+  autoSaveFiles: boolean;
   includeHistoryInProactiveReviews: boolean;
   sendAnonymizedUsageLogs: boolean;
   proactiveDelayMs: number;
@@ -112,6 +113,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   thinkingLevel: 'low',
   theme: 'light',
   autoReview: true,
+  autoSaveFiles: false,
   includeHistoryInProactiveReviews: false,
   sendAnonymizedUsageLogs: true,
   proactiveDelayMs: 12_000,
