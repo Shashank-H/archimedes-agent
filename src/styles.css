@@ -26,6 +26,8 @@
   --shadow-1: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
   --shadow-2: 0 1px 1px rgba(0, 0, 0, 0.02), 0 2px 2px rgba(0, 0, 0, 0.04), inset 0 0 0 1px rgba(0, 0, 0, 0.08);
   --shadow-4: 0 2px 2px rgba(0, 0, 0, 0.04), 0 8px 16px -4px rgba(0, 0, 0, 0.04), inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+  --button-hover-bg: var(--canvas-soft-2);
+  --button-hover-border: #d4d4d4;
   font-family: Geist, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: var(--ink);
   background: var(--canvas-soft);
@@ -61,7 +63,7 @@ button {
   line-height: 20px;
   transition: background 180ms ease, border-color 180ms ease, color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
 }
-button:hover:not(:disabled) { background: var(--canvas-soft-2); border-color: #d4d4d4; }
+button:hover:not(:disabled) { background: var(--button-hover-bg); border-color: var(--button-hover-border); }
 button:active:not(:disabled) { transform: translateY(1px) scale(0.99); }
 button:disabled { cursor: not-allowed; opacity: 0.48; }
 button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, .sidebar-resizer:focus-visible {
@@ -83,8 +85,38 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   --shadow-1: inset 0 0 0 1px rgba(255, 255, 255, 0.10);
   --shadow-2: 0 1px 1px rgba(0, 0, 0, 0.24), 0 2px 2px rgba(0, 0, 0, 0.20), inset 0 0 0 1px rgba(255, 255, 255, 0.10);
   --shadow-4: 0 2px 2px rgba(0, 0, 0, 0.25), 0 8px 16px -4px rgba(0, 0, 0, 0.26), inset 0 0 0 1px rgba(255, 255, 255, 0.10);
+  --button-hover-bg: var(--canvas-soft-2);
+  --button-hover-border: #3f3f3f;
   color-scheme: dark;
   background: #050505;
   color: #fff;
 }
-.theme-dark button:hover:not(:disabled) { background: #171717; border-color: #3f3f3f; }
+
+.theme-slate-dusk {
+  --ink: #f4f7fb;
+  --on-primary: #17202b;
+  --body: #c4ceda;
+  --mute: #8492a6;
+  --hairline: #334052;
+  --hairline-strong: #536175;
+  --canvas: #1e2733;
+  --canvas-soft: #161f2a;
+  --canvas-soft-2: #283344;
+  --link: #7db7ff;
+  --error: #ff8d8d;
+  --warning: #f3c76b;
+  --cyan: #7ce6d0;
+  --violet: #b79cff;
+  --pink: #ff9ac8;
+  --blue: #7db7ff;
+  --teal: #6edbd3;
+  --ship: #ff8d8d;
+  --amber: #f3c76b;
+  --shadow-1: inset 0 0 0 1px rgba(203, 213, 225, 0.10);
+  --shadow-2: 0 1px 1px rgba(8, 13, 20, 0.22), 0 2px 2px rgba(8, 13, 20, 0.18), inset 0 0 0 1px rgba(203, 213, 225, 0.10);
+  --shadow-4: 0 2px 2px rgba(8, 13, 20, 0.22), 0 8px 16px -4px rgba(8, 13, 20, 0.28), inset 0 0 0 1px rgba(203, 213, 225, 0.10);
+  --button-hover-bg: var(--canvas-soft-2);
+  --button-hover-border: var(--hairline-strong);
+  background: var(--canvas-soft);
+  color: var(--ink);
+}

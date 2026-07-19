@@ -12,6 +12,7 @@ import { WorkspaceStatusBar } from './WorkspaceStatusBar';
 import { WorkspaceTabs } from './WorkspaceTabs';
 import { WorkspaceTopBar } from './WorkspaceTopBar';
 import { SettingsEditorTab } from '../../settings/SettingsEditorTab';
+import { getThemeClasses } from '../../../lib/theme';
 import { useSidebarResize } from '../hooks/useSidebarResize';
 
 function dispatchAssistantPaneEvent(eventName: 'archimedes:open-chat') {
@@ -41,6 +42,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
   const { sidebarWidth, handleResizePointerDown, handleResizeKeyDown } = useSidebarResize();
   const [isExplorerCollapsed, setIsExplorerCollapsed] = useState(false);
   const [isAssistantCollapsed, setIsAssistantCollapsed] = useState(false);
+  const themeClassName = getThemeClasses(settings.theme).join(' ');
 
   const handleOpenSettings = () => {
     openAppSettingsTab();
@@ -59,7 +61,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
 
   return (
     <main
-      className={`app-shell theme-${settings.theme} ${workspaceShellStyles.moduleAnchor}${isExplorerCollapsed ? ' is-explorer-collapsed' : ''}${isAssistantCollapsed ? ' is-assistant-collapsed' : ''}`}
+      className={`app-shell ${themeClassName} ${workspaceShellStyles.moduleAnchor}${isExplorerCollapsed ? ' is-explorer-collapsed' : ''}${isAssistantCollapsed ? ' is-assistant-collapsed' : ''}`}
       style={{ '--sidebar-width': `${sidebarWidth}px` } as CSSProperties}
     >
       <WorkspaceTopBar

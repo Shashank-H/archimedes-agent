@@ -31,8 +31,8 @@
   box-shadow: none;
 }
 :global(.custom-select-trigger:hover:not(:disabled)) {
-  background: var(--canvas-soft-2);
-  border-color: #d4d4d4;
+  background: var(--button-hover-bg);
+  border-color: var(--button-hover-border);
 }
 :global(.custom-select-trigger:active:not(:disabled)), :global(.custom-select-option:active:not(:disabled)) {
   transform: none;
@@ -152,9 +152,9 @@
 }
 
 :global(.theme-dark .custom-select-menu) {
-  background: #171717;
-  border-color: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.24), 0 8px 16px -4px rgba(0, 0, 0, 0.26), 0 24px 32px -8px rgba(0, 0, 0, 0.38), inset 0 0 0 1px rgba(255, 255, 255, 0.10);
+  background: var(--canvas-soft-2);
+  border-color: var(--hairline);
+  box-shadow: var(--shadow-4);
 }
 
 

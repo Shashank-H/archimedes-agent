@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { setAnalyticsUsageConsent } from '../../../lib/analytics';
 import { llmProviderFactory } from '../../../lib/llm/provider';
 import { appStorage } from '../../../lib/storage';
+import { APP_THEME_CLASSES, getThemeClasses, toEffectiveBaseTheme } from '../../../lib/theme';
 import type { AppSettings } from '../../../types';
 
 export function useWorkspaceSettings() {
@@ -14,12 +15,13 @@ export function useWorkspaceSettings() {
 
   useEffect(() => {
     const root = document.documentElement;
-    root.classList.toggle('theme-dark', settings.theme === 'dark');
-    root.classList.toggle('theme-light', settings.theme === 'light');
-    root.style.colorScheme = settings.theme;
+    const themeClasses = getThemeClasses(settings.theme);
+    root.classList.remove(...APP_THEME_CLASSES);
+    root.classList.add(...themeClasses);
+    root.style.colorScheme = toEffectiveBaseTheme(settings.theme);
 
     return () => {
-      root.classList.remove('theme-dark', 'theme-light');
+      root.classList.remove(...themeClasses);
       root.style.removeProperty('color-scheme');
     };
   }, [settings.theme]);
