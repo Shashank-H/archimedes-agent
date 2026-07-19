@@ -14,10 +14,11 @@ import { useModelSelection } from '../../hooks/useModelSelection';
 import { useMaskedApiKeyInput } from '../../hooks/useMaskedApiKeyInput';
 import { useCodexAuth } from '../../hooks/useCodexAuth';
 import { useReviewTimingSettings } from '../../hooks/useReviewTimingSettings';
-import type { LlmProvider } from '../../types';
+import type { AppTheme, LlmProvider } from '../../types';
 import { LINKEDIN_PROFILE_URL, OLLAMA_OS_OPTIONS, OLLAMA_VISION_MODELS_URL, OPEN_SOURCE_CREDITS, PERSONAL_SITE_URL, PROJECT_GITHUB_URL, RECOMMENDED_VISION_MODELS, X_PROFILE_URL } from './constants';
 import { SETTINGS_SECTIONS, type SettingsSectionId } from './settingsSections';
 import { useOllamaOriginInstructions } from './hooks/useOllamaOriginInstructions';
+import { APP_THEME_OPTIONS } from '../../lib/theme';
 
 function getInitialSettingsSectionId(): SettingsSectionId {
   if (typeof window === 'undefined') return 'provider';
@@ -439,17 +440,16 @@ export function SettingsPage() {
         <section id="settings-appearance" className={sectionClassName('appearance')}>
           {renderSectionHeader('appearance')}
           <div className="settings-editor-card settings-footer-controls">
-              <AppTooltip label={settings.theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}>
-                <button
-                  type="button"
-                  className="theme-footer-button"
-                  onClick={() => onSettingsChange({ ...settings, theme: settings.theme === 'dark' ? 'light' : 'dark' })}
-                  aria-label={settings.theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-                >
-                  <Icon name={settings.theme === 'dark' ? 'sun' : 'moon'} size={15} />
-                  <span>{settings.theme === 'dark' ? 'Light theme' : 'Dark theme'}</span>
-                </button>
-              </AppTooltip>
+            <label>
+              Theme
+              <CustomSelect
+                ariaLabel="Theme"
+                value={settings.theme}
+                options={APP_THEME_OPTIONS}
+                onChange={(theme) => onSettingsChange({ ...settings, theme: theme as AppTheme })}
+                className="settings-theme-select"
+              />
+            </label>
           </div>
         </section>
         <section id="settings-privacy" className={sectionClassName('privacy')}>

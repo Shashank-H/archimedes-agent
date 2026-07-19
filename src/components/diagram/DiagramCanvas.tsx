@@ -4,12 +4,13 @@ import '@excalidraw/excalidraw/index.css';
 import type { AppState, BinaryFiles, ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types';
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types';
 import { createPersistentAppState } from '../../lib/excalidrawFile';
-import type { DiagramSnapshot } from '../../types';
+import { toEffectiveBaseTheme } from '../../lib/theme';
+import type { AppTheme, DiagramSnapshot } from '../../types';
 
 type DiagramCanvasProps = {
   documentKey: string;
   initialSnapshot: DiagramSnapshot | null;
-  theme: 'light' | 'dark';
+  theme: AppTheme;
   onSnapshotChange: (snapshot: DiagramSnapshot) => void;
   onApiReady: (api: ExcalidrawImperativeAPI) => void;
 };
@@ -21,15 +22,16 @@ const EXCALIDRAW_UI_OPTIONS = {
 } as const;
 
 export function DiagramCanvas({ documentKey, initialSnapshot, theme, onSnapshotChange, onApiReady }: DiagramCanvasProps) {
+  const excalidrawTheme = toEffectiveBaseTheme(theme);
   const initialData = useMemo(
     () =>
       initialSnapshot
         ? {
             elements: initialSnapshot.elements,
-            appState: { ...initialSnapshot.appState, theme },
+            appState: { ...initialSnapshot.appState, theme: excalidrawTheme },
             files: initialSnapshot.files,
           }
-        : { appState: { theme } },
+        : { appState: { theme: excalidrawTheme } },
     // Excalidraw treats initialData as initialization input. If this depends on
     // the live snapshot, each onChange can feed a new initialData object back
     // into Excalidraw and create an update loop. The component is keyed by
@@ -43,7 +45,7 @@ export function DiagramCanvas({ documentKey, initialSnapshot, theme, onSnapshotC
       <Excalidraw
         excalidrawAPI={onApiReady}
         initialData={initialData}
-        theme={theme}
+        theme={excalidrawTheme}
         UIOptions={EXCALIDRAW_UI_OPTIONS}
         onChange={(elements: readonly ExcalidrawElement[], appState: AppState, files: BinaryFiles) => {
           onSnapshotChange({
